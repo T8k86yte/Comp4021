@@ -1,20 +1,61 @@
 'use strict';
 
 // HTTP routes for account handling. Mounted at /api by server.js.
-// UC-01 (register) lives here; sign in and sign out will join it later.
+// UC-01 (register) and UC-02 (sign in) live here; sign out joins them later.
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const accountStore = require('../lib/accountStore');
-const { MESSAGES, validateRegistration } = require('../lib/validation');
+const { isSignedIn } = require('../lib/sessionGuard');
+const { MESSAGES, validateLogin, validateRegistration } = require('../lib/validation');
 
 const BCRYPT_ROUNDS = 10;
+
+// Compared against when the username does not exist, so a failed sign in spends
+// roughly the same time either way and the response does not hint at which of
+// the two conditions failed (UC-02 A1).
+const DUMMY_HASH = bcrypt.hashSync('placeholder-for-timing-only', BCRYPT_ROUNDS);
 
 const router = express.Router();
 
 function sendErrors(response, status, errors) {
   return response.status(status).json({ ok: false, errors });
 }
+
+function signedInPayload(account, extra = {}) {
+  return {
+    ok: true,
+    account: { username: account.username },
+    redirect: '/lobby.html',
+    ...extra,
+  };
+}
+
+// Starts a fresh session for the account and records its identifier as the only
+// valid one for that account, which ends any session held elsewhere (UC-02
+// step 6). The callback receives an error or nothing.
+function startSession(request, username, done) {
+  request.session.regenerate((regenerateError) => {
+    if (regenerateError) {
+      return done(regenerateError);
+    }
+    request.session.account = username;
+    accountStore.setSessionId(username, request.session.id);
+    return request.session.save((saveError) => done(saveError || null));
+  });
+}
+
+// GET /api/session
+// Tells the page whether a valid session exists, so the sign-in form can be
+// skipped (UC-02 A3).
+router.get('/session', (request, response) => {
+  const signedIn = isSignedIn(request.session);
+  return response.json({
+    ok: true,
+    signedIn,
+    account: signedIn ? { username: request.session.account } : null,
+  });
+});
 
 // POST /api/register
 // Body: username, password, confirmPassword (JSON or form encoded).
@@ -62,25 +103,57 @@ router.post('/register', (request, response, next) => {
         }]);
       }
 
-      // A brand new session id is issued before the account name is stored, so
-      // a session id that existed before registration cannot be reused as the
-      // signed-in session.
-      return request.session.regenerate((regenerateError) => {
-        if (regenerateError) {
-          return next(regenerateError);
+      return startSession(request, account.username, (error) => {
+        if (error) {
+          return next(error);
         }
-        request.session.account = account.username;
-        return request.session.save((saveError) => {
-          if (saveError) {
-            return next(saveError);
-          }
-          console.log(`[auth] registered account=${account.username}`);
-          return response.status(201).json({
-            ok: true,
-            account: { username: account.username },
-            redirect: '/lobby.html',
-          });
-        });
+        console.log(`[auth] registered account=${account.username}`);
+        return response.status(201).json(signedInPayload(account));
+      });
+    })
+    .catch(next);
+});
+
+// POST /api/login
+// Body: username, password (JSON or form encoded).
+// 200 on success with the session that signed the account in.
+// 400 with a list of { field, code, message } when the input is rejected.
+// A1: a missing account and a wrong password share one message.
+router.post('/login', (request, response, next) => {
+  // A3: an existing valid session skips the form.
+  if (isSignedIn(request.session)) {
+    const account = accountStore.findByUsername(request.session.account);
+    if (account) {
+      return response.json(signedInPayload(account, { alreadySignedIn: true }));
+    }
+  }
+
+  const body = request.body || {};
+  const result = validateLogin({ username: body.username, password: body.password });
+
+  if (!result.valid) {
+    return sendErrors(response, 400, result.errors);
+  }
+
+  const account = accountStore.findByUsername(result.username);
+  const passwordHash = account ? account.passwordHash : DUMMY_HASH;
+
+  return bcrypt.compare(result.password, passwordHash)
+    .then((matches) => {
+      if (!account || !matches) {
+        return sendErrors(response, 400, [{
+          field: null,
+          code: 'invalid_credentials',
+          message: MESSAGES.invalidCredentials,
+        }]);
+      }
+
+      return startSession(request, account.username, (error) => {
+        if (error) {
+          return next(error);
+        }
+        console.log(`[auth] signed in account=${account.username}`);
+        return response.json(signedInPayload(account));
       });
     })
     .catch(next);

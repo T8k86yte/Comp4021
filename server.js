@@ -8,6 +8,7 @@ const express = require('express');
 const session = require('express-session');
 const { Server } = require('socket.io');
 const accountStore = require('./lib/accountStore');
+const { enforceSingleSession, isSignedIn } = require('./lib/sessionGuard');
 const authRoutes = require('./routes/auth');
 
 const PORT = Number(process.env.PORT) || 8000;
@@ -30,6 +31,11 @@ const sessionMiddleware = session({
 });
 
 app.use(sessionMiddleware);
+
+// One account holds one session at a time, so a session that has been taken
+// over by a newer sign in is dropped here before any route sees it.
+app.use(enforceSingleSession);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -62,9 +68,21 @@ app.use((error, request, response, next) => {
 // handshake, so a socket can be identified by account instead of by socket id.
 io.engine.use(sessionMiddleware);
 
+// A socket carries the identity of the session that opened it. Connections
+// without a valid session are refused, because every room action needs an
+// account (UC-02 step 6, UC-05 onwards).
+io.use((socket, next) => {
+  const session = socket.request.session;
+  if (!isSignedIn(session)) {
+    return next(new Error('not signed in'));
+  }
+  socket.data.account = session.account;
+  return next();
+});
+
 io.on('connection', (socket) => {
-  const account = socket.request.session && socket.request.session.account;
-  console.log(`[socket] connected id=${socket.id} account=${account || 'anonymous'}`);
+  const account = socket.data.account;
+  console.log(`[socket] connected id=${socket.id} account=${account}`);
 
   socket.on('disconnect', (reason) => {
     console.log(`[socket] disconnected id=${socket.id} reason=${reason}`);
