@@ -9,6 +9,7 @@ const session = require('express-session');
 const { Server } = require('socket.io');
 const accountStore = require('./lib/accountStore');
 const { enforceSingleSession, isSignedIn } = require('./lib/sessionGuard');
+const socketRegistry = require('./lib/socketRegistry');
 const authRoutes = require('./routes/auth');
 
 const PORT = Number(process.env.PORT) || 8000;
@@ -18,6 +19,9 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer);
+
+// Lets account routes close the sockets of an account that signs out.
+socketRegistry.attach(io);
 
 const sessionMiddleware = session({
   secret: SESSION_SECRET,

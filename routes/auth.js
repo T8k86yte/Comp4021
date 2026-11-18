@@ -6,7 +6,8 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const accountStore = require('../lib/accountStore');
-const { isSignedIn } = require('../lib/sessionGuard');
+const { COOKIE_NAME, isSignedIn } = require('../lib/sessionGuard');
+const socketRegistry = require('../lib/socketRegistry');
 const { MESSAGES, validateLogin, validateRegistration } = require('../lib/validation');
 
 const BCRYPT_ROUNDS = 10;
@@ -157,6 +158,35 @@ router.post('/login', (request, response, next) => {
       });
     })
     .catch(next);
+});
+
+// POST /api/logout
+// Ends the current session, clears the cookie and closes the sockets of the
+// account, so the account holds neither a session nor a seat (UC-03).
+// Answers the same way when there is nothing to end, so the page can always
+// call it.
+router.post('/logout', (request, response, next) => {
+  const session = request.session;
+  const account = session && session.account && isSignedIn(session) ? session.account : null;
+
+  if (!account) {
+    response.clearCookie(COOKIE_NAME);
+    return response.json({ ok: true, signedIn: false, redirect: '/' });
+  }
+
+  const sessionId = session.id;
+  return session.destroy((error) => {
+    if (error) {
+      return next(error);
+    }
+    accountStore.clearSessionId(account, sessionId);
+    response.clearCookie(COOKIE_NAME);
+    // Room handling is added with UC-04 to UC-06; removing the player from the
+    // room and telling the other player goes here, before the sockets close.
+    const closed = socketRegistry.disconnectAccount(account);
+    console.log(`[auth] signed out account=${account} sockets=${closed}`);
+    return response.json({ ok: true, signedIn: false, redirect: '/' });
+  });
 });
 
 module.exports = router;
