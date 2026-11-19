@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lobby - Edgerunner: Race to the Crystal Palace</title>
+</head>
+
+<body>
+    <!-- Placeholder lobby: just enough for the signed-in flow to land somewhere.
+         Room codes, the member list and the ready control belong to the page owner. -->
+    <h1>Lobby</h1>
+    <p id="status">Checking your session...</p>
+    <p><button id="sign-out" type="button" hidden>Sign out</button></p>
+
+    <script>
+        const statusLine = document.getElementById('status');
+        const signOutButton = document.getElementById('sign-out');
+
+        async function showSession() {
+            const response = await fetch('/api/session');
+            const body = await response.json();
+
+            if (!body.signedIn) {
+                statusLine.textContent = 'You are not signed in. ';
+                const link = document.createElement('a');
+                link.href = '/';
+                link.textContent = 'Back to the home page';
+                statusLine.append(link);
+                return;
+            }
+
+            statusLine.textContent = `Signed in as ${body.account.username}.`;
+            signOutButton.hidden = false;
+        }
+
+        signOutButton.addEventListener('click', async () => {
+            const response = await fetch('/api/logout', { method: 'POST' });
+            const body = await response.json();
+            window.location.assign(body.redirect || '/');
+        });
+
+        showSession().catch(() => {
+            statusLine.textContent = 'The server could not be reached.';
+        });
+    </script>
+</body>
+
+</html>

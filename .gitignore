@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Local configuration and secrets
+.env
+
+# Local runtime data, regenerated with the seed accounts on first start
+data/accounts.json
+data/accounts.json.tmp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+*.tmp
