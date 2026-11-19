@@ -36,7 +36,7 @@ The server reads `PORT` and `SESSION_SECRET` from a file named `.env` in the pro
 
 ## Test accounts
 
-Two demonstration accounts are created from the seed data in `data/accounts.json`:
+Two demonstration accounts are seeded into `data/accounts.json` on first start:
 
 | Username | Password |
 | --- | --- |
