@@ -1,10 +1,10 @@
 # Protocol
 
-Last updated: 2026-11-18
+Last updated: 2026-11-23
 
-This document is the contract between the browser pages and the Node.js server. It covers the HTTP endpoints used for account handling and the Socket.IO conventions that room and race handling build on. Code that follows a different shape is out of date with this document.
+This document is the contract between the browser pages and the Node.js server. It covers the HTTP endpoints used for account handling, the Socket.IO events used by the lobby, and the hand-over to the race engine. Code that follows a different shape is out of date with this document.
 
-Status: the account part (UC-01 to UC-03) is implemented. The room and race sections are not defined yet; see section 8.
+Status: accounts (UC-01 to UC-03) and the lobby (UC-04 to UC-06) are implemented. The race engine is not in this tree yet, so sections 9 and 10 describe the hand-over without snapshots.
 
 ## 1. Conventions
 
@@ -129,17 +129,85 @@ A session that has been replaced elsewhere is not reported here as signed in; su
 - The client connects to the same origin the page was served from. Engine.IO version 4, so `socket.io-client` 4.x.
 - The handshake reuses the session cookie, so the server knows the account without the client sending any name. Nothing in a client payload is trusted as an identity.
 - A handshake without a valid session is refused. `connect_error` reaches the client with the message `not signed in`. The page should treat that as "signed out" and go back to the home page.
-- After a successful handshake, the server holds the account of the socket. When the account signs out, its sockets are closed by the server.
+- After a successful handshake, the server holds the account of the socket. A newer connection of the same account closes the older socket, because an account holds one seat.
+- When the account signs out, its sockets are closed by the server.
 
-Not defined yet: event names, payloads and broadcast rates for room and race handling. They are agreed with the owners of the racing and results pages and recorded here before either side implements them.
+## 8. Lobby events
 
-## 8. Not implemented yet
+A room holds at most two accounts. Membership is keyed by account, so a reconnecting client returns to the same seat. Rooms live in server memory; restarting the server drops them.
 
-The following parts of the game have no endpoint or event yet:
+### 8.1 Client to server
 
-- Room creation and joining: room code, member list, ready flags.
-- Race start: three-second countdown, shared start timestamp.
-- Race loop: input uplink, server tick, snapshots, timer, finish.
-- Cheat toggle and its broadcast.
-- Results payload.
-- Removing a player from a room when the account signs out or is signed in elsewhere.
+| Event | Payload | Effect |
+| --- | --- | --- |
+| `room:create` | `{ "practice": false }`, the field is optional | Creates a room, the sender becomes its host. A player who was in another room leaves it first. |
+| `room:join` | `{ "code": "ABC123" }`, case-insensitive | Adds the sender as the second member. Joining the room the player already sits in returns that room again. |
+| `room:leave` | none | Removes the sender from the room. |
+| `room:ready` | `{ "ready": true }` | Sets the ready flag. Only allowed in the waiting phase with two members. |
+| `race:input` | `{ "matchId": "...", "action": "left" }` | Forwards one action to the race engine, see section 9. |
+
+Every event accepts an acknowledgement callback. When the client passes one it receives `{ "ok": true }` or `{ "ok": false, "error": { "code": ..., "message": ... } }`; without a callback a rejection arrives as a `room:error` event with the same `error` object.
+
+### 8.2 Server to client
+
+| Event | Payload |
+| --- | --- |
+| `room:state` | The whole room, see 8.3. Sent to both members whenever anything changes, and to a client that reconnects into a room. |
+| `room:error` | `{ "code": ..., "message": ... }`, only when no acknowledgement callback was passed |
+| `race:start` | `{ "matchId": "...", "startedAt": 1700000000000, "practice": false }` |
+| `race:bootstrap` | The initial race state for one seat, see section 9 |
+| `race:update` | One snapshot per server tick, see section 9 |
+
+### 8.3 Room state
+
+```json
+{
+  "code": "ABC123",
+  "host": "player1",
+  "phase": "waiting",
+  "practice": false,
+  "matchId": null,
+  "countdownEndsAt": null,
+  "members": [
+    { "account": "player1", "host": true, "ready": false, "connected": true },
+    { "account": "player2", "host": false, "ready": true, "connected": true }
+  ],
+  "cheat": { "active": false, "log": [] }
+}
+```
+
+- `phase` is one of `waiting`, `countdown`, `racing`, `finished`. `closed` is only used internally when a room is destroyed.
+- `countdownEndsAt` is a server timestamp in milliseconds, set while `phase` is `countdown` and cleared afterwards.
+- `matchId` is set when the countdown ends and is kept for the rest of the room's life.
+- `members` is ordered with the host first while the host is present. `connected` follows the account, not the socket.
+- `cheat` carries the room flag and its record; toggling is not implemented yet (section 10).
+
+### 8.4 Refusals
+
+| Code | Meaning |
+| --- | --- |
+| `room_not_found` | No room uses that code, including a code that is not six letters or digits |
+| `room_full` | The room already holds two players |
+| `room_already_started` | The room left the waiting phase |
+| `not_in_room` | The account sits in no room |
+| `ready_locked` | Ready is disabled once the countdown has started |
+| `waiting_for_opponent` | A second player has to join before the race can start |
+
+Leaving during the countdown cancels it and returns the room to `waiting`. A disconnect during the countdown does not cancel it: the countdown finishes and the missing player keeps the seat, marked `connected: false`.
+
+## 9. Race handoff
+
+When the countdown ends the server sets `phase` to `racing`, assigns `matchId`, sends `race:start` to both seats and hands the room to the race engine.
+
+- `race:bootstrap` is the state of one seat at the moment its socket is attached: `{ "matchId", "track", "snapshot" }`, where `snapshot` is the engine's current state. A client that reconnects during a race receives this event again.
+- `race:update` is `{ "matchId", "snapshot" }`, sent once per engine tick to every connected seat.
+- `race:input` carries `{ "matchId", "action" }`. The action names and the snapshot fields belong to the race engine.
+- The engine reads the account from the socket, checks the match id and the session, and ignores anything else.
+
+The race engine is a separate module (`room-match.js` with `index.js`), loaded from the repository root or from a `race/` folder. When it is absent the server still runs: rooms reach `racing` and clients receive `race:start`, but no snapshot follows. The server logs this once at startup of the first race.
+
+## 10. Not implemented yet
+
+- Cheat toggle during a race and its broadcast (`cheat` in the room state is a placeholder).
+- Results payload and the page that renders it.
+- Removing a player from a room when the account signs out or is signed in elsewhere: signing out already closes the sockets, which marks the seat disconnected, but the seat itself stays in the room.

@@ -10,6 +10,7 @@ const { Server } = require('socket.io');
 const accountStore = require('./lib/accountStore');
 const { enforceSingleSession, isSignedIn } = require('./lib/sessionGuard');
 const socketRegistry = require('./lib/socketRegistry');
+const { registerRoomHandlers } = require('./lib/roomSocket');
 const authRoutes = require('./routes/auth');
 
 const PORT = Number(process.env.PORT) || 8000;
@@ -92,6 +93,10 @@ io.on('connection', (socket) => {
     console.log(`[socket] disconnected id=${socket.id} reason=${reason}`);
   });
 });
+
+// Lobby behaviour: room codes, member lists, ready flags, countdown and the
+// hand-over to the race engine.
+registerRoomHandlers(io);
 
 // The account store is loaded (or seeded) before the port is opened, so no
 // registration can arrive while the store is still empty.
