@@ -1,0 +1,57 @@
+{
+  "id": "slums-prototype",
+  "startSegmentId": "approach",
+  "segments": {
+    "approach": {
+      "stage": "slums",
+      "laneCount": 4,
+      "length": 30,
+      "progress": [0, 30],
+      "exits": [["shortcut", 1], ["main-route", 1], ["main-route", 2], ["main-route", 3]],
+      "objects": [
+        {"id": "approach-coin", "type": "coin", "lane": 1, "distance": 8},
+        {"id": "approach-pipe", "type": "barrier", "lane": 1, "distance": 16},
+        {"id": "approach-crate", "type": "crate", "lane": 2, "distance": 22}
+      ]
+    },
+    "main-route": {
+      "stage": "slums",
+      "laneCount": 4,
+      "length": 55,
+      "progress": [30, 85],
+      "exits": [["runout", 0], ["runout", 1], ["runout", 2], ["runout", 3]],
+      "objects": [
+        {"id": "main-coin-1", "type": "coin", "lane": 1, "distance": 5},
+        {"id": "main-coin-2", "type": "coin", "lane": 1, "distance": 10},
+        {"id": "main-coin-3", "type": "coin", "lane": 1, "distance": 15},
+        {"id": "main-coin-4", "type": "coin", "lane": 2, "distance": 20},
+        {"id": "main-coin-5", "type": "coin", "lane": 2, "distance": 25},
+        {"id": "main-coin-6", "type": "coin", "lane": 2, "distance": 29},
+        {"id": "main-coin-7", "type": "coin", "lane": 3, "distance": 37},
+        {"id": "main-coin-8", "type": "coin", "lane": 3, "distance": 43},
+        {"id": "main-coin-9", "type": "coin", "lane": 3, "distance": 49},
+        {"id": "main-wall", "type": "barrier", "lane": 2, "distance": 34}
+      ]
+    },
+    "shortcut": {
+      "stage": "slums",
+      "laneCount": 3,
+      "length": 35,
+      "progress": [30, 85],
+      "exits": [["runout", 0], ["runout", 0], ["runout", 0]],
+      "objects": [
+        {"id": "shortcut-crate", "type": "crate", "lane": 1, "distance": 10},
+        {"id": "shortcut-coin", "type": "coin", "lane": 1, "distance": 14}
+      ]
+    },
+    "runout": {
+      "stage": "slums",
+      "laneCount": 4,
+      "length": 25,
+      "progress": [85, 110],
+      "objects": [
+        {"id": "finish-coin", "type": "coin", "lane": 0, "distance": 12}
+      ]
+    }
+  }
+}
