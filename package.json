@@ -5,7 +5,8 @@
   "description": "Edgerunner: Race to the Crystal Palace - two-player racing game (COMP4021 group project)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=18"
