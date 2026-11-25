@@ -12,6 +12,7 @@ const { enforceSingleSession, isSignedIn } = require('./lib/sessionGuard');
 const socketRegistry = require('./lib/socketRegistry');
 const { registerRoomHandlers } = require('./lib/roomSocket');
 const authRoutes = require('./routes/auth');
+const { raceClientSource } = require('./lib/raceClient');
 
 const PORT = Number(process.env.PORT) || 8000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-only-secret-change-before-deploy';
@@ -43,6 +44,7 @@ app.use(enforceSingleSession);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.get('/race-client.js', (request, response) => response.type('js').send(raceClientSource()));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api', authRoutes);
