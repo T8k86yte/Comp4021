@@ -10,6 +10,11 @@ const IMPACT_MS = 500;
 const STUN_MS = 1_500;
 const RECOVERY_MS = 1_000;
 const STEP_DISTANCE = 0.25;
+const MAX_AMMO = 3;
+const RELOAD_MS = 1_000;
+const SHOT_COOLDOWN_MS = 200;
+const SHOT_STEP = STEP_DISTANCE * 3;
+const SHOT_RANGE = 12;
 const OBJECT_TYPES = new Set(["coin", "crate", "barrier"]);
 
 function indexTrack(track) {
@@ -22,6 +27,7 @@ function indexTrack(track) {
     const objectIds = new Set();
     for (const [id, segment] of segments) {
         if (!segment || typeof segment.stage !== "string" || !segment.stage ||
+            (segment.mode !== undefined && segment.mode !== "ground" && segment.mode !== "flight") ||
             !Number.isInteger(segment.laneCount) || segment.laneCount < 1 ||
             !Number.isInteger(segment.length) || segment.length < 1 ||
             !Array.isArray(segment.progress) || segment.progress.length !== 2 ||
@@ -32,12 +38,13 @@ function indexTrack(track) {
 
         const objectsByCell = new Map();
         for (const object of segment.objects) {
-            const cell = object && `${object.distance}:${object.lane}`;
+            const cell = object && `${object.distance}:${object.lane}:${segment.mode === "flight" ? object.altitude ?? 1 : 1}`;
             if (!object || typeof object.id !== "string" || !object.id || objectIds.has(object.id) ||
                 !OBJECT_TYPES.has(object.type) || !Number.isInteger(object.distance) ||
                 object.distance < 1 || object.distance >= segment.length ||
                 !Number.isInteger(object.lane) || object.lane < 0 || object.lane >= segment.laneCount ||
-                objectsByCell.has(cell)) {
+                (object.altitude !== undefined && (!Number.isInteger(object.altitude) || object.altitude < 0 ||
+                    object.altitude >= (segment.mode === "flight" ? 3 : 1))) || objectsByCell.has(cell)) {
                 throw new TypeError(`Invalid or duplicate object in segment: ${id}`);
             }
             objectIds.add(object.id);
@@ -76,12 +83,18 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
         name: typeof name === "string" ? name : id,
         seat,
         connected: true,
+        altitude: start.mode === "flight" ? 1 : 0,
         segmentId: course.startSegmentId,
         // Start in the two middle lanes on the four-lane prototype.
         lane: Math.floor((start.laneCount - 1) / 2) + (start.laneCount > 1 ? seat : 0),
         distance: 0,
         coins: 0,
-        shield: MAX_SHIELD,
+        shield: start.mode === "flight" ? 100 : MAX_SHIELD,
+        ammo: MAX_AMMO,
+        reloadAt: null,
+        fireAt: 0,
+        fireInput: false,
+        altitudeInput: 0,
         refillAt: null,
         slowUntil: 0,
         phaseUntil: 0,
@@ -95,6 +108,8 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
         finishTimeMs: null
     }));
     const removedObjects = new Set();
+    let projectiles = [];
+    let nextProjectileId = 1;
     let tick = 0;
     let elapsedMs = 0;
     let firstFinishMs = null;
@@ -109,6 +124,16 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
 
         if (action === "toggleCheat" && practice === true && !player.toggleCheat) {
             player.toggleCheat = true;
+            return true;
+        }
+        if (action === "fire" && !player.fireInput && player.ammo > 0 && elapsedMs >= player.fireAt &&
+            elapsedMs >= player.stunUntil && elapsedMs >= player.phaseUntil) {
+            player.fireInput = true;
+            return true;
+        }
+        if ((action === "up" || action === "down") && !player.altitudeInput &&
+            segments.get(player.segmentId).mode === "flight" && elapsedMs >= player.stunUntil) {
+            player.altitudeInput = action === "up" ? 1 : -1;
             return true;
         }
         if ((action === "left" || action === "right") && !player.laneInput && elapsedMs >= player.stunUntil) {
@@ -126,6 +151,8 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
         if (!connected) {
             player.laneInput = 0;
             player.toggleCheat = false;
+            player.fireInput = false;
+            player.altitudeInput = 0;
         }
         return true;
     }
@@ -141,6 +168,13 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
             player.shield += 1;
             player.refillAt = player.shield < MAX_SHIELD ? player.refillAt + REFILL_MS : null;
         }
+        if (player.reloadAt !== null && elapsedMs >= player.reloadAt) {
+            player.ammo += 1;
+            player.reloadAt = player.ammo < MAX_AMMO ? player.reloadAt + RELOAD_MS : null;
+        }
+        if (segments.get(player.segmentId).mode === "flight" && player.shield === 0 && elapsedMs >= player.stunUntil) {
+            player.shield = 100;
+        }
         if (!player.connected || tickStartMs < player.stunUntil) return null;
 
         const segment = segments.get(player.segmentId);
@@ -148,6 +182,21 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
         const changedLane = lane !== player.lane;
         player.lane = lane;
         player.laneInput = 0;
+        const oldAltitude = player.altitude;
+        player.altitude = segment.mode === "flight" ? Math.max(0, Math.min(2, oldAltitude + player.altitudeInput)) : 0;
+        player.altitudeInput = 0;
+        if (player.fireInput) {
+            player.fireInput = false;
+            if (tickStartMs >= player.phaseUntil && tickStartMs >= player.fireAt && player.ammo > 0) {
+                player.ammo -= 1;
+                player.reloadAt ??= elapsedMs + RELOAD_MS;
+                player.fireAt = elapsedMs + SHOT_COOLDOWN_MS;
+                const shot = { id: `shot-${nextProjectileId++}`, playerId: player.id, segmentId: player.segmentId,
+                    lane, altitude: player.altitude, distance: player.distance, remaining: SHOT_RANGE };
+                projectiles.push(shot);
+                events.push({ type: "shotFired", playerId: player.id, projectileId: shot.id });
+            }
+        }
 
         const distance = player.distance;
         let movement = STEP_DISTANCE;
@@ -155,8 +204,8 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
         else if (tickStartMs < player.slowUntil) movement /= 2;
         const nextDistance = distance + movement;
         // Each tick covers less than one grid, so at most one cell can be entered.
-        const row = changedLane ? Math.ceil(distance) : Math.floor(distance) + 1;
-        let object = row <= nextDistance ? segment.objectsByCell.get(`${row}:${lane}`) : undefined;
+        const row = changedLane || oldAltitude !== player.altitude ? Math.ceil(distance) : Math.floor(distance) + 1;
+        let object = row <= nextDistance ? segment.objectsByCell.get(`${row}:${lane}:${segment.mode === "flight" ? player.altitude : 1}`) : undefined;
         if (object && (removedObjects.has(object.id) || tickStartMs < player.phaseUntil ||
             (object.type !== "coin" && (player.cheatActive || tickStartMs < player.recoveryUntil)))) {
             object = undefined;
@@ -179,14 +228,15 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
             removedObjects.add(object.id);
             events.push({ type: "crateBroken", playerId: player.id, objectId: object.id });
         }
+        const flight = segments.get(player.segmentId).mode === "flight";
         if (player.shield > 0) {
-            player.shield -= 1;
-            player.refillAt = player.shield > 0 ? player.refillAt ?? elapsedMs + REFILL_MS : null;
+            player.shield = Math.max(0, player.shield - (flight ? (object.type === "crate" ? 10 : 25) : 1));
+            player.refillAt = !flight && player.shield > 0 ? player.refillAt ?? elapsedMs + REFILL_MS : null;
         }
         const stunned = player.shield === 0;
         if (stunned) {
             player.stuns += 1;
-            player.stunUntil = elapsedMs + STUN_MS;
+            player.stunUntil = elapsedMs + (flight ? 2_500 : STUN_MS);
             player.recoveryUntil = player.stunUntil + RECOVERY_MS;
         } else if (object.type === "barrier") {
             player.slowUntil = elapsedMs + IMPACT_MS;
@@ -209,12 +259,60 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
             player.segmentId = nextSegmentId;
             player.lane = nextLane;
             player.distance -= segment.length;
+            const destination = segments.get(nextSegmentId);
+            if (destination.mode === "flight" && segment.mode !== "flight") {
+                player.altitude = 1;
+                player.shield = 100;
+                player.refillAt = null;
+                player.phaseUntil = player.slowUntil = player.stunUntil = player.recoveryUntil = 0;
+                player.ammo = MAX_AMMO;
+                player.reloadAt = null;
+                events.push({ type: "launched", playerId: player.id });
+            } else if (destination.mode !== "flight") player.altitude = 0;
+            if (destination.stage !== segment.stage) {
+                events.push({ type: "stageChanged", playerId: player.id, stage: destination.stage });
+            }
             return;
         }
         player.distance = segment.length;
         player.finishTimeMs = elapsedMs;
         firstFinishMs ??= elapsedMs;
         events.push({ type: "runnerFinished", playerId: player.id });
+    }
+
+    function advanceProjectiles() {
+        projectiles = projectiles.filter(shot => {
+            let travel = Math.min(SHOT_STEP, shot.remaining);
+            shot.remaining -= travel;
+            while (travel > 0) {
+                const segment = segments.get(shot.segmentId);
+                const end = Math.min(segment.length, shot.distance + travel);
+                const target = segment.objects.filter(object => object.type !== "coin" &&
+                    object.lane === shot.lane && (segment.mode !== "flight" || (object.altitude ?? 1) === shot.altitude) &&
+                    object.distance > shot.distance && object.distance <= end && !removedObjects.has(object.id))
+                    .sort((a, b) => a.distance - b.distance)[0];
+                if (target) {
+                    if (target.type === "crate") {
+                        removedObjects.add(target.id);
+                        events.push({ type: "crateBroken", playerId: shot.playerId, objectId: target.id, source: "shot" });
+                    }
+                    events.push({ type: "shotHit", playerId: shot.playerId, objectId: target.id, projectileId: shot.id });
+                    return false;
+                }
+                travel -= end - shot.distance;
+                shot.distance = end;
+                if (end === segment.length) {
+                    if (!segment.exits) return false;
+                    const [nextId, nextLane] = segment.exits[shot.lane];
+                    const next = segments.get(nextId);
+                    if (next.stage !== segment.stage || (next.mode === "flight") !== (segment.mode === "flight")) return false;
+                    shot.segmentId = nextId;
+                    shot.lane = nextLane;
+                    shot.distance = 0;
+                }
+            }
+            return shot.remaining > 0;
+        });
     }
 
     function runnerState(player) {
@@ -229,11 +327,17 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
             connected: player.connected,
             segmentId: player.segmentId,
             stage: segment.stage,
+            mode: segment.mode === "flight" ? "flight" : "ground",
+            altitude: player.altitude,
             lane: player.lane,
             distance: player.distance,
             progress: from + (to - from) * player.distance / segment.length,
             coins: player.coins,
             shield: player.shield,
+            maxShield: segment.mode === "flight" ? 100 : MAX_SHIELD,
+            ammo: player.ammo,
+            maxAmmo: MAX_AMMO,
+            ammoRefillMs: player.reloadAt === null ? null : Math.max(0, player.reloadAt - elapsedMs),
             shieldRefillMs: player.refillAt === null ? null : player.refillAt - elapsedMs,
             phaseRemainingMs: Math.max(0, player.phaseUntil - elapsedMs),
             stunRemainingMs,
@@ -268,6 +372,7 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
             practice: practice === true,
             players: players.map(runnerState),
             removedObjectIds: [...removedObjects],
+            projectiles: projectiles.map(({ remaining, ...shot }) => ({ ...shot })),
             events: events.map(event => ({ ...event })),
             results: results?.map(result => ({ ...result })) ?? null
         };
@@ -281,6 +386,8 @@ function createRace({ players: entrants, track = prototypeTrack, practice = fals
         elapsedMs += TICK_MS;
         events = [];
         const moves = players.map(player => planMovement(player, tickStartMs)).filter(Boolean);
+        // Shots clear breakable terrain before this tick's runner contacts.
+        advanceProjectiles();
         // Resolve earlier contacts first. Rotate priority when both reach the same object together.
         const [first, second] = moves;
         const contested = first?.object && first.object === second?.object &&

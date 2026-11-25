@@ -1,0 +1,1049 @@
+{
+  "id": "city-to-crystal-palace",
+  "name": "City to the Crystal Palace",
+  "startSegmentId": "slums-basin",
+  "finishProgress": 735,
+  "pacing": {
+    "cleanRouteSeconds": {
+      "shortest": 141,
+      "main": 147,
+      "longest": 153
+    },
+    "roundLimitSeconds": 180
+  },
+  "stages": {
+    "slums": {
+      "name": "The Slums",
+      "art": "/assets/slums.png",
+      "color": "#f4ad62",
+      "coins": 6
+    },
+    "downtown": {
+      "name": "Downtown",
+      "art": "/assets/downtown.png",
+      "color": "#a6ecf5",
+      "coins": 7
+    },
+    "spaceport": {
+      "name": "Spaceport and orbit",
+      "art": "/assets/spaceport.png",
+      "color": "#b6b7ff",
+      "coins": 7
+    }
+  },
+  "segments": {
+    "slums-basin": {
+      "name": "Drainage basin",
+      "stage": "slums",
+      "mode": "ground",
+      "laneCount": 4,
+      "length": 50,
+      "progress": [
+        0,
+        50
+      ],
+      "objects": [
+        {
+          "id": "slums-basin-coin-1",
+          "type": "coin",
+          "distance": 14,
+          "lane": 1,
+          "visual": "scrap-token"
+        },
+        {
+          "id": "slums-basin-coin-2",
+          "type": "coin",
+          "distance": 25,
+          "lane": 2,
+          "visual": "scrap-token"
+        },
+        {
+          "id": "slums-basin-crate-1",
+          "type": "crate",
+          "distance": 36,
+          "lane": 1,
+          "visual": "scrap-crate"
+        },
+        {
+          "id": "slums-basin-barrier-1",
+          "type": "barrier",
+          "distance": 44,
+          "lane": 3,
+          "visual": "pipe"
+        }
+      ],
+      "sign": "LEFT: scaffold shortcut / THROUGH: market channel",
+      "exits": [
+        [
+          "slums-scaffold",
+          1
+        ],
+        [
+          "slums-market",
+          1
+        ],
+        [
+          "slums-market",
+          2
+        ],
+        [
+          "slums-market",
+          3
+        ]
+      ]
+    },
+    "slums-market": {
+      "name": "Market channel",
+      "stage": "slums",
+      "mode": "ground",
+      "laneCount": 4,
+      "length": 110,
+      "progress": [
+        50,
+        160
+      ],
+      "exits": [
+        [
+          "slums-gate",
+          0
+        ],
+        [
+          "slums-gate",
+          1
+        ],
+        [
+          "slums-gate",
+          2
+        ],
+        [
+          "slums-gate",
+          3
+        ]
+      ],
+      "objects": [
+        {
+          "id": "slums-market-coin-1",
+          "type": "coin",
+          "distance": 22,
+          "lane": 2,
+          "visual": "scrap-token"
+        },
+        {
+          "id": "slums-market-coin-2",
+          "type": "coin",
+          "distance": 52,
+          "lane": 1,
+          "visual": "scrap-token"
+        },
+        {
+          "id": "slums-market-coin-3",
+          "type": "coin",
+          "distance": 86,
+          "lane": 3,
+          "visual": "scrap-token"
+        },
+        {
+          "id": "slums-market-crate-1",
+          "type": "crate",
+          "distance": 33,
+          "lane": 2,
+          "visual": "scrap-crate"
+        },
+        {
+          "id": "slums-market-crate-2",
+          "type": "crate",
+          "distance": 64,
+          "lane": 1,
+          "visual": "scrap-crate"
+        },
+        {
+          "id": "slums-market-crate-3",
+          "type": "crate",
+          "distance": 98,
+          "lane": 3,
+          "visual": "scrap-crate"
+        },
+        {
+          "id": "slums-market-barrier-1",
+          "type": "barrier",
+          "distance": 44,
+          "lane": 3,
+          "visual": "pipe"
+        },
+        {
+          "id": "slums-market-barrier-2",
+          "type": "barrier",
+          "distance": 77,
+          "lane": 2,
+          "visual": "pipe"
+        },
+        {
+          "id": "slums-market-barrier-3",
+          "type": "barrier",
+          "distance": 98,
+          "lane": 0,
+          "visual": "pipe"
+        }
+      ]
+    },
+    "slums-scaffold": {
+      "name": "Scaffold shortcut",
+      "stage": "slums",
+      "mode": "ground",
+      "laneCount": 3,
+      "length": 100,
+      "progress": [
+        50,
+        160
+      ],
+      "exits": [
+        [
+          "slums-gate",
+          0
+        ],
+        [
+          "slums-gate",
+          0
+        ],
+        [
+          "slums-gate",
+          0
+        ]
+      ],
+      "objects": [
+        {
+          "id": "slums-scaffold-coin-1",
+          "type": "coin",
+          "distance": 58,
+          "lane": 1,
+          "visual": "scrap-token"
+        },
+        {
+          "id": "slums-scaffold-crate-1",
+          "type": "crate",
+          "distance": 24,
+          "lane": 1,
+          "visual": "scrap-crate"
+        },
+        {
+          "id": "slums-scaffold-crate-2",
+          "type": "crate",
+          "distance": 68,
+          "lane": 2,
+          "visual": "scrap-crate"
+        },
+        {
+          "id": "slums-scaffold-crate-3",
+          "type": "crate",
+          "distance": 88,
+          "lane": 0,
+          "visual": "scrap-crate"
+        },
+        {
+          "id": "slums-scaffold-barrier-1",
+          "type": "barrier",
+          "distance": 44,
+          "lane": 0,
+          "visual": "pipe"
+        },
+        {
+          "id": "slums-scaffold-barrier-2",
+          "type": "barrier",
+          "distance": 78,
+          "lane": 1,
+          "visual": "pipe"
+        }
+      ],
+      "sign": "MERGE: service gate"
+    },
+    "slums-gate": {
+      "name": "Service gate climb",
+      "stage": "slums",
+      "mode": "ground",
+      "laneCount": 4,
+      "length": 60,
+      "progress": [
+        160,
+        220
+      ],
+      "exits": [
+        [
+          "downtown-plaza",
+          0
+        ],
+        [
+          "downtown-plaza",
+          1
+        ],
+        [
+          "downtown-plaza",
+          2
+        ],
+        [
+          "downtown-plaza",
+          3
+        ]
+      ],
+      "objects": [
+        {
+          "id": "slums-gate-barrier-1",
+          "type": "barrier",
+          "distance": 20,
+          "lane": 1,
+          "visual": "pipe"
+        },
+        {
+          "id": "slums-gate-barrier-2",
+          "type": "barrier",
+          "distance": 38,
+          "lane": 2,
+          "visual": "pipe"
+        },
+        {
+          "id": "slums-gate-barrier-3",
+          "type": "barrier",
+          "distance": 50,
+          "lane": 0,
+          "visual": "pipe"
+        },
+        {
+          "id": "slums-gate-crate-1",
+          "type": "crate",
+          "distance": 30,
+          "lane": 3,
+          "visual": "scrap-crate"
+        },
+        {
+          "id": "slums-gate-crate-2",
+          "type": "crate",
+          "distance": 45,
+          "lane": 1,
+          "visual": "scrap-crate"
+        }
+      ],
+      "sign": "DOWNTOWN: security gate"
+    },
+    "downtown-plaza": {
+      "name": "Transit plaza",
+      "stage": "downtown",
+      "mode": "ground",
+      "laneCount": 4,
+      "length": 45,
+      "progress": [
+        220,
+        265
+      ],
+      "objects": [
+        {
+          "id": "downtown-plaza-barrier-1",
+          "type": "barrier",
+          "distance": 21,
+          "lane": 2,
+          "visual": "car"
+        },
+        {
+          "id": "downtown-plaza-crate-1",
+          "type": "crate",
+          "distance": 30,
+          "lane": 1,
+          "visual": "glass"
+        }
+      ],
+      "sign": "LEFT: service shortcut / RIGHT: coin terraces",
+      "exits": [
+        [
+          "downtown-service",
+          1
+        ],
+        [
+          "downtown-boulevard",
+          1
+        ],
+        [
+          "downtown-boulevard",
+          2
+        ],
+        [
+          "downtown-terrace",
+          1
+        ]
+      ]
+    },
+    "downtown-boulevard": {
+      "name": "Glass boulevard",
+      "stage": "downtown",
+      "mode": "ground",
+      "laneCount": 4,
+      "length": 125,
+      "progress": [
+        265,
+        390
+      ],
+      "exits": [
+        [
+          "downtown-access",
+          0
+        ],
+        [
+          "downtown-access",
+          1
+        ],
+        [
+          "downtown-access",
+          2
+        ],
+        [
+          "downtown-access",
+          3
+        ]
+      ],
+      "objects": [
+        {
+          "id": "downtown-boulevard-coin-1",
+          "type": "coin",
+          "distance": 29,
+          "lane": 1,
+          "visual": "city-credit"
+        },
+        {
+          "id": "downtown-boulevard-coin-2",
+          "type": "coin",
+          "distance": 63,
+          "lane": 2,
+          "visual": "city-credit"
+        },
+        {
+          "id": "downtown-boulevard-coin-3",
+          "type": "coin",
+          "distance": 101,
+          "lane": 3,
+          "visual": "city-credit"
+        },
+        {
+          "id": "downtown-boulevard-barrier-1",
+          "type": "barrier",
+          "distance": 18,
+          "lane": 0,
+          "visual": "car"
+        },
+        {
+          "id": "downtown-boulevard-barrier-2",
+          "type": "barrier",
+          "distance": 45,
+          "lane": 2,
+          "visual": "car"
+        },
+        {
+          "id": "downtown-boulevard-barrier-3",
+          "type": "barrier",
+          "distance": 79,
+          "lane": 1,
+          "visual": "car"
+        },
+        {
+          "id": "downtown-boulevard-barrier-4",
+          "type": "barrier",
+          "distance": 110,
+          "lane": 3,
+          "visual": "car"
+        },
+        {
+          "id": "downtown-boulevard-crate-1",
+          "type": "crate",
+          "distance": 54,
+          "lane": 1,
+          "visual": "glass"
+        },
+        {
+          "id": "downtown-boulevard-crate-2",
+          "type": "crate",
+          "distance": 90,
+          "lane": 0,
+          "visual": "glass"
+        },
+        {
+          "id": "downtown-boulevard-crate-3",
+          "type": "crate",
+          "distance": 116,
+          "lane": 2,
+          "visual": "glass"
+        }
+      ]
+    },
+    "downtown-service": {
+      "name": "Glass service corridor",
+      "stage": "downtown",
+      "mode": "ground",
+      "laneCount": 3,
+      "length": 105,
+      "progress": [
+        265,
+        390
+      ],
+      "exits": [
+        [
+          "downtown-access",
+          0
+        ],
+        [
+          "downtown-access",
+          0
+        ],
+        [
+          "downtown-access",
+          0
+        ]
+      ],
+      "objects": [
+        {
+          "id": "downtown-service-coin-1",
+          "type": "coin",
+          "distance": 61,
+          "lane": 1,
+          "visual": "city-credit"
+        },
+        {
+          "id": "downtown-service-crate-1",
+          "type": "crate",
+          "distance": 21,
+          "lane": 0,
+          "visual": "glass"
+        },
+        {
+          "id": "downtown-service-crate-2",
+          "type": "crate",
+          "distance": 21,
+          "lane": 1,
+          "visual": "glass"
+        },
+        {
+          "id": "downtown-service-crate-3",
+          "type": "crate",
+          "distance": 21,
+          "lane": 2,
+          "visual": "glass"
+        },
+        {
+          "id": "downtown-service-crate-4",
+          "type": "crate",
+          "distance": 74,
+          "lane": 1,
+          "visual": "glass"
+        },
+        {
+          "id": "downtown-service-crate-5",
+          "type": "crate",
+          "distance": 91,
+          "lane": 2,
+          "visual": "glass"
+        },
+        {
+          "id": "downtown-service-barrier-1",
+          "type": "barrier",
+          "distance": 46,
+          "lane": 2,
+          "visual": "wall"
+        },
+        {
+          "id": "downtown-service-barrier-2",
+          "type": "barrier",
+          "distance": 85,
+          "lane": 0,
+          "visual": "wall"
+        }
+      ]
+    },
+    "downtown-terrace": {
+      "name": "Garden terraces",
+      "stage": "downtown",
+      "mode": "ground",
+      "laneCount": 3,
+      "length": 140,
+      "progress": [
+        265,
+        390
+      ],
+      "exits": [
+        [
+          "downtown-access",
+          3
+        ],
+        [
+          "downtown-access",
+          3
+        ],
+        [
+          "downtown-access",
+          3
+        ]
+      ],
+      "objects": [
+        {
+          "id": "downtown-terrace-coin-1",
+          "type": "coin",
+          "distance": 30,
+          "lane": 0,
+          "visual": "city-credit"
+        },
+        {
+          "id": "downtown-terrace-coin-2",
+          "type": "coin",
+          "distance": 66,
+          "lane": 2,
+          "visual": "city-credit"
+        },
+        {
+          "id": "downtown-terrace-coin-3",
+          "type": "coin",
+          "distance": 107,
+          "lane": 1,
+          "visual": "city-credit"
+        },
+        {
+          "id": "downtown-terrace-barrier-1",
+          "type": "barrier",
+          "distance": 46,
+          "lane": 1,
+          "visual": "planter"
+        },
+        {
+          "id": "downtown-terrace-barrier-2",
+          "type": "barrier",
+          "distance": 86,
+          "lane": 0,
+          "visual": "planter"
+        },
+        {
+          "id": "downtown-terrace-barrier-3",
+          "type": "barrier",
+          "distance": 120,
+          "lane": 2,
+          "visual": "planter"
+        },
+        {
+          "id": "downtown-terrace-crate-1",
+          "type": "crate",
+          "distance": 56,
+          "lane": 2,
+          "visual": "glass"
+        },
+        {
+          "id": "downtown-terrace-crate-2",
+          "type": "crate",
+          "distance": 94,
+          "lane": 1,
+          "visual": "glass"
+        }
+      ]
+    },
+    "downtown-access": {
+      "name": "Spaceport approach",
+      "stage": "downtown",
+      "mode": "ground",
+      "laneCount": 4,
+      "length": 70,
+      "progress": [
+        390,
+        460
+      ],
+      "exits": [
+        [
+          "spaceport-hangar",
+          0
+        ],
+        [
+          "spaceport-hangar",
+          1
+        ],
+        [
+          "spaceport-hangar",
+          2
+        ],
+        [
+          "spaceport-hangar",
+          3
+        ]
+      ],
+      "objects": [
+        {
+          "id": "downtown-access-barrier-1",
+          "type": "barrier",
+          "distance": 21,
+          "lane": 1,
+          "visual": "car"
+        },
+        {
+          "id": "downtown-access-barrier-2",
+          "type": "barrier",
+          "distance": 46,
+          "lane": 2,
+          "visual": "car"
+        },
+        {
+          "id": "downtown-access-barrier-3",
+          "type": "barrier",
+          "distance": 60,
+          "lane": 3,
+          "visual": "car"
+        },
+        {
+          "id": "downtown-access-crate-1",
+          "type": "crate",
+          "distance": 35,
+          "lane": 3,
+          "visual": "glass"
+        },
+        {
+          "id": "downtown-access-crate-2",
+          "type": "crate",
+          "distance": 55,
+          "lane": 0,
+          "visual": "glass"
+        }
+      ],
+      "sign": "SPACEPORT: access hatch"
+    },
+    "spaceport-hangar": {
+      "name": "Hangar break-in",
+      "stage": "spaceport",
+      "mode": "ground",
+      "laneCount": 4,
+      "length": 65,
+      "progress": [
+        460,
+        525
+      ],
+      "exits": [
+        [
+          "orbit-launch",
+          0
+        ],
+        [
+          "orbit-launch",
+          1
+        ],
+        [
+          "orbit-launch",
+          2
+        ],
+        [
+          "orbit-launch",
+          3
+        ]
+      ],
+      "objects": [
+        {
+          "id": "spaceport-hangar-coin-1",
+          "type": "coin",
+          "distance": 20,
+          "lane": 1,
+          "visual": "crystal-shard"
+        },
+        {
+          "id": "spaceport-hangar-coin-2",
+          "type": "coin",
+          "distance": 42,
+          "lane": 2,
+          "visual": "crystal-shard"
+        },
+        {
+          "id": "spaceport-hangar-crate-1",
+          "type": "crate",
+          "distance": 29,
+          "lane": 2,
+          "visual": "cargo"
+        },
+        {
+          "id": "spaceport-hangar-crate-2",
+          "type": "crate",
+          "distance": 47,
+          "lane": 0,
+          "visual": "cargo"
+        },
+        {
+          "id": "spaceport-hangar-barrier-1",
+          "type": "barrier",
+          "distance": 36,
+          "lane": 1,
+          "visual": "cargo-wall"
+        },
+        {
+          "id": "spaceport-hangar-barrier-2",
+          "type": "barrier",
+          "distance": 52,
+          "lane": 3,
+          "visual": "cargo-wall"
+        }
+      ],
+      "sign": "LAUNCH: shuttle assigned to every lane"
+    },
+    "orbit-launch": {
+      "name": "Launch corridor",
+      "stage": "spaceport",
+      "mode": "flight",
+      "laneCount": 4,
+      "length": 30,
+      "progress": [
+        525,
+        555
+      ],
+      "objects": [
+        {
+          "id": "orbit-launch-coin-1",
+          "type": "coin",
+          "distance": 21,
+          "lane": 2,
+          "altitude": 2,
+          "visual": "crystal-shard"
+        }
+      ],
+      "sign": "LEFT: outer drift / THROUGH: debris corridor",
+      "exits": [
+        [
+          "orbit-drift",
+          0
+        ],
+        [
+          "orbit-debris",
+          1
+        ],
+        [
+          "orbit-debris",
+          2
+        ],
+        [
+          "orbit-debris",
+          3
+        ]
+      ]
+    },
+    "orbit-debris": {
+      "name": "Debris corridor",
+      "stage": "spaceport",
+      "mode": "flight",
+      "laneCount": 4,
+      "length": 110,
+      "progress": [
+        555,
+        665
+      ],
+      "exits": [
+        [
+          "orbit-dock",
+          0
+        ],
+        [
+          "orbit-dock",
+          1
+        ],
+        [
+          "orbit-dock",
+          2
+        ],
+        [
+          "orbit-dock",
+          3
+        ]
+      ],
+      "objects": [
+        {
+          "id": "orbit-debris-coin-1",
+          "type": "coin",
+          "distance": 37,
+          "lane": 1,
+          "altitude": 0,
+          "visual": "crystal-shard"
+        },
+        {
+          "id": "orbit-debris-coin-2",
+          "type": "coin",
+          "distance": 79,
+          "lane": 3,
+          "altitude": 2,
+          "visual": "crystal-shard"
+        },
+        {
+          "id": "orbit-debris-crate-1",
+          "type": "crate",
+          "distance": 18,
+          "lane": 1,
+          "altitude": 1,
+          "visual": "debris"
+        },
+        {
+          "id": "orbit-debris-crate-2",
+          "type": "crate",
+          "distance": 33,
+          "lane": 2,
+          "altitude": 2,
+          "visual": "debris"
+        },
+        {
+          "id": "orbit-debris-crate-3",
+          "type": "crate",
+          "distance": 53,
+          "lane": 3,
+          "altitude": 1,
+          "visual": "debris"
+        },
+        {
+          "id": "orbit-debris-crate-4",
+          "type": "crate",
+          "distance": 70,
+          "lane": 1,
+          "altitude": 0,
+          "visual": "debris"
+        },
+        {
+          "id": "orbit-debris-crate-5",
+          "type": "crate",
+          "distance": 88,
+          "lane": 2,
+          "altitude": 1,
+          "visual": "debris"
+        },
+        {
+          "id": "orbit-debris-crate-6",
+          "type": "crate",
+          "distance": 101,
+          "lane": 0,
+          "altitude": 2,
+          "visual": "debris"
+        },
+        {
+          "id": "orbit-debris-barrier-1",
+          "type": "barrier",
+          "distance": 44,
+          "lane": 0,
+          "altitude": 1,
+          "visual": "satellite-hull"
+        },
+        {
+          "id": "orbit-debris-barrier-2",
+          "type": "barrier",
+          "distance": 62,
+          "lane": 2,
+          "altitude": 1,
+          "visual": "satellite-hull"
+        },
+        {
+          "id": "orbit-debris-barrier-3",
+          "type": "barrier",
+          "distance": 95,
+          "lane": 3,
+          "altitude": 0,
+          "visual": "satellite-hull"
+        }
+      ]
+    },
+    "orbit-drift": {
+      "name": "Outer drift",
+      "stage": "spaceport",
+      "mode": "flight",
+      "laneCount": 4,
+      "length": 125,
+      "progress": [
+        555,
+        665
+      ],
+      "exits": [
+        [
+          "orbit-dock",
+          0
+        ],
+        [
+          "orbit-dock",
+          1
+        ],
+        [
+          "orbit-dock",
+          2
+        ],
+        [
+          "orbit-dock",
+          3
+        ]
+      ],
+      "objects": [
+        {
+          "id": "orbit-drift-coin-1",
+          "type": "coin",
+          "distance": 67,
+          "lane": 0,
+          "altitude": 2,
+          "visual": "crystal-shard"
+        },
+        {
+          "id": "orbit-drift-crate-1",
+          "type": "crate",
+          "distance": 37,
+          "lane": 1,
+          "altitude": 1,
+          "visual": "debris"
+        },
+        {
+          "id": "orbit-drift-crate-2",
+          "type": "crate",
+          "distance": 92,
+          "lane": 2,
+          "altitude": 0,
+          "visual": "debris"
+        },
+        {
+          "id": "orbit-drift-crate-3",
+          "type": "crate",
+          "distance": 111,
+          "lane": 3,
+          "altitude": 2,
+          "visual": "debris"
+        }
+      ]
+    },
+    "orbit-dock": {
+      "name": "Crystal Palace approach",
+      "stage": "spaceport",
+      "mode": "flight",
+      "laneCount": 4,
+      "length": 70,
+      "progress": [
+        665,
+        735
+      ],
+      "objects": [
+        {
+          "id": "orbit-dock-coin-1",
+          "type": "coin",
+          "distance": 34,
+          "lane": 2,
+          "altitude": 1,
+          "visual": "crystal-shard"
+        },
+        {
+          "id": "orbit-dock-crate-1",
+          "type": "crate",
+          "distance": 17,
+          "lane": 1,
+          "altitude": 1,
+          "visual": "debris"
+        },
+        {
+          "id": "orbit-dock-crate-2",
+          "type": "crate",
+          "distance": 42,
+          "lane": 3,
+          "altitude": 2,
+          "visual": "debris"
+        },
+        {
+          "id": "orbit-dock-barrier-1",
+          "type": "barrier",
+          "distance": 28,
+          "lane": 0,
+          "altitude": 0,
+          "visual": "satellite-hull"
+        }
+      ],
+      "sign": "CRYSTAL PALACE: all lanes and altitudes dock"
+    }
+  }
+}

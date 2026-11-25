@@ -42,6 +42,7 @@ test("an authenticated seat uses its own account and the current match ID", () =
     const start = match.attachSocket(cyan);
     assert.equal(start.matchId, "round-2");
     assert.equal(start.track.id, start.snapshot.trackId);
+    assert.equal(start.track.id, "city-to-crystal-palace");
     assert.deepEqual(start.snapshot.players.map(player => [player.id, player.connected]), [
         ["Cyan", true], ["Magenta", false]
     ]);
@@ -117,4 +118,28 @@ test("replacing a socket in the same session clears its queued controls", () => 
     assert.equal(update.snapshot.players[0].lane, 1);
     assert.equal(deliveries.has(cyan), false);
     assert.equal(deliveries.has(latest), true);
+});
+
+test("gun state and shared projectiles survive a reconnect without replaying shot events", () => {
+    const { match, cyan, magenta } = setup();
+    match.attachSocket(cyan);
+    match.attachSocket(magenta);
+    assert.equal(match.acceptInput(cyan, { matchId: "round-1", action: "fire" }), false);
+    assert.equal(match.acceptInput(cyan, { matchId: "round-2", action: "fire" }), true);
+    const fired = advance(match);
+    assert.equal(fired.update.snapshot.players[0].ammo, 2);
+    assert.equal(fired.deliveries.get(magenta).snapshot.projectiles[0].playerId, "Cyan");
+    assert.equal(match.detachSocket(cyan), true);
+    advance(match);
+    const replacement = socketFor("Cyan", "cyan-session");
+    const bootstrap = match.attachSocket(replacement);
+    assert.equal(bootstrap.snapshot.players[0].ammo, 2);
+    assert.equal(bootstrap.snapshot.players[0].ammoRefillMs, 950);
+    assert.equal(bootstrap.snapshot.projectiles[0].distance, 1.5);
+    assert.deepEqual(bootstrap.snapshot.events, []);
+    bootstrap.snapshot.projectiles[0].distance = 999;
+    const resumed = advance(match);
+    assert.equal(resumed.update.snapshot.projectiles[0].distance, 2.25);
+    assert.equal(resumed.deliveries.has(replacement), true);
+    assert.equal(match.acceptInput(cyan, { matchId: "round-2", action: "fire" }), false);
 });

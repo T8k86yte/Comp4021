@@ -1,7 +1,7 @@
 const { createRace } = require("./index");
-const prototypeTrack = require("./prototype-track.json");
+const fullCourse = require("./full-course.json");
 
-function createRoomMatch({ matchId, accounts, isSignedIn, track = prototypeTrack, practice = false }) {
+function createRoomMatch({ matchId, accounts, isSignedIn, track = fullCourse, practice = false }) {
     if (typeof matchId !== "string" || !matchId || typeof isSignedIn !== "function") {
         throw new TypeError("A room match needs a match ID and a session check");
     }
