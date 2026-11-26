@@ -1,10 +1,10 @@
 # Protocol
 
-Last updated: 2026-11-23
+Last updated: 2026-11-26
 
 This document is the contract between the browser pages and the Node.js server. It covers the HTTP endpoints used for account handling, the Socket.IO events used by the lobby, and the hand-over to the race engine. Code that follows a different shape is out of date with this document.
 
-Status: accounts (UC-01 to UC-03) and the lobby (UC-04 to UC-06) are implemented. The race engine is not in this tree yet, so sections 9 and 10 describe the hand-over without snapshots.
+Status: accounts (UC-01 to UC-03), the lobby (UC-04 to UC-06), and the authoritative race engine are implemented. Room matches use the full Slums, Downtown and Spaceport/orbit course. See [maps and art](maps-and-art.md) for gameplay and Canvas fields.
 
 ## 1. Conventions
 
@@ -140,7 +140,7 @@ A room holds at most two accounts. Membership is keyed by account, so a reconnec
 
 | Event | Payload | Effect |
 | --- | --- | --- |
-| `room:create` | `{ "practice": false }`, the field is optional | Creates a room, the sender becomes its host. A player who was in another room leaves it first. |
+| `room:create` | `{ "practice": false, "manualTest": false }`, both fields are optional | Creates a room, the sender becomes its host. manualTest allows either game window to relay the two keyboard schemes; both accounts still sign in and join normally. A player who was in another room leaves it first. |
 | `room:join` | `{ "code": "ABC123" }`, case-insensitive | Adds the sender as the second member. Joining the room the player already sits in returns that room again. |
 | `room:leave` | none | Removes the sender from the room. |
 | `room:ready` | `{ "ready": true }` | Sets the ready flag. Only allowed in the waiting phase with two members. |
@@ -199,15 +199,21 @@ Leaving during the countdown cancels it and returns the room to `waiting`. A dis
 
 When the countdown ends the server sets `phase` to `racing`, assigns `matchId`, sends `race:start` to both seats and hands the room to the race engine.
 
-- `race:bootstrap` is the state of one seat at the moment its socket is attached: `{ "matchId", "track", "snapshot" }`, where `snapshot` is the engine's current state. A client that reconnects during a race receives this event again.
+- `race:bootstrap` is the state of one seat at the moment its socket is attached: `{ "matchId", "controls", "track", "snapshot" }`, where `snapshot` is the engine's current state. A client that reconnects during a race receives this event again.
 - `race:update` is `{ "matchId", "snapshot" }`, sent once per engine tick to every connected seat.
-- `race:input` carries `{ "matchId", "action" }`. The action names and the snapshot fields belong to the race engine.
-- The engine reads the account from the socket, checks the match id and the session, and ignores anything else.
+- `race:input` carries `{ "matchId", "action", "controlSeat"? }`. Bootstrap controls contains `{ owner, guest, manualTest }`; controlSeat 0 maps to owner, 1 to guest. Cross-seat movement/firing is allowed only in manualTest rooms with both sessions valid and connected. Cheat actions always require the sender’s own seat. The action names and the snapshot fields belong to the race engine.
+- The engine reads the account from the socket, checks the match id and the session, and rejects invalid or unauthorized controlSeat values.
 
-The race engine is a separate module (`room-match.js` with `index.js`), loaded from the repository root or from a `race/` folder. When it is absent the server still runs: rooms reach `racing` and clients receive `race:start`, but no snapshot follows. The server logs this once at startup of the first race.
+The race engine lives in `race/`, with `room-match.js` adapting the authenticated sockets. The adapter defaults to `full-course.json`. Direct engine callers can still choose `prototype-track.json`.
+
+Inputs are `left`, `right`, `fire`, `up`, `down`, `enableImmunity`, `boostStart`, `boostEnd`, and `toggleCheat` (legacy practice only). Up/down applies only in orbital flight, not atmospheric ascent. The owner uses WASD/F, the guest arrows/Enter. L enables immunity in any room, clears stun/slow effects, restores the shield and marks usedCheat; hold Space for 1.5× normal speed. Release, blur and disconnect cancel acceleration. L supersedes the legacy 2× cheat. Each tick accepts at most one horizontal change, one altitude change, one shot request and one cheat toggle per runner; ammunition and the firing interval also limit shots. No client-supplied position, damage or identity is trusted.
+
+Player snapshots add `mode` (`ground`/`flight`), `altitude` (0 on ground; 0–2 in flight), `maxShield`, `ammo`, `maxAmmo`, and `ammoRefillMs`. Existing shield, score, phase, stun, recovery and finish fields remain. `projectiles` contains active `{ id, playerId, segmentId, lane, altitude, distance }` shots. `removedObjectIds` includes terrain destroyed by shots. New tick events are `shotFired`, `shotHit`, `stageChanged`, and `launched`. Bootstrap has the same full state and suppresses replay of old tick events.
+
+When `snapshot.status` is `ended`, `snapshot.results` contains the ordered standings. Per-player `immunityActive`, `boostActive`, `cheatActive` and `usedCheat` are authoritative; the room-level `cheat` object remains a legacy placeholder.
 
 ## 10. Not implemented yet
 
-- Cheat toggle during a race and its broadcast (`cheat` in the room state is a placeholder).
-- Results payload and the page that renders it.
+- The multiplayer Canvas/results pages. A separate local map playtest is available with `npm run preview`.
+- Replaying final results on a finished-room reconnect and detaching a live race socket when its account explicitly leaves a room.
 - Removing a player from a room when the account signs out or is signed in elsewhere: signing out already closes the sockets, which marks the seat disconnected, but the seat itself stays in the room.
