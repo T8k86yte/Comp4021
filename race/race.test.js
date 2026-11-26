@@ -87,6 +87,74 @@ test("an earlier contact wins when two runners reach a coin in the same tick", (
     assert.deepEqual(snapshot.players.map(player => player.coins), [0, 1]);
 });
 
+test("fast practice movement collects every crossed row and alternates shared ties", () => {
+    const track = straightTrack(8, [1, 2, 3, 4, 5].map(distance => ({
+        id: `coin-${distance}`, type: "coin", lane: 1, distance
+    })));
+    track.cruiseSpeed = 12.5;
+    const race = createRace({ players, track, practice: true });
+    race.applyInput("magenta", "left");
+    players.forEach(player => race.applyInput(player.id, "toggleCheat"));
+    const pickups = [];
+    for (let tick = 0; tick < 4; tick++) pickups.push(...race.step().events.filter(e => e.type === "coinCollected"));
+    assert.deepEqual(pickups.map(e => [e.objectId, e.playerId]), [
+        ["coin-1", "cyan"], ["coin-2", "magenta"], ["coin-3", "cyan"],
+        ["coin-4", "magenta"], ["coin-5", "cyan"]
+    ]);
+    assert.deepEqual(race.getSnapshot().players.map(player => [player.distance, player.coins]), [[5, 3], [5, 2]]);
+});
+
+test("fast movement resolves the earlier contact even when the other runner is boosted", () => {
+    const track = straightTrack(6, [{ id: "coin", type: "coin", lane: 1, distance: 3 }]);
+    track.cruiseSpeed = 12.5;
+    const race = createRace({ players, track, practice: true });
+    race.applyInput("magenta", "left");
+    race.applyInput("magenta", "toggleCheat");
+    race.step();
+    race.applyInput("magenta", "toggleCheat");
+    advance(race, 2);
+    race.applyInput("cyan", "toggleCheat");
+    const state = race.step();
+    assert.deepEqual(state.players.map(player => player.distance), [3.125, 3.125]);
+    assert.deepEqual(state.players.map(player => player.coins), [0, 1]);
+    assert.equal(state.events.filter(e => e.type === "coinCollected").length, 1);
+});
+
+test("fast movement checks arrival rows after launch and keeps projectile timing", () => {
+    const track = straightTrack(3);
+    track.cruiseSpeed = 12.5;
+    track.segments.straight.exits = [0, 1, 2, 3].map(lane => ["orbit", lane]);
+    track.segments.orbit = { stage: "spaceport", mode: "flight", laneCount: 4, length: 10,
+        progress: [3, 13], objects: [1, 2].map(distance => ({
+            id: `arrival-${distance}`, type: "coin", lane: 1, altitude: 1, distance
+        })) };
+    const race = createRace({ players, track, practice: true });
+    race.applyInput("cyan", "toggleCheat");
+    race.applyInput("cyan", "fire");
+    const fired = race.step();
+    assert.equal(fired.players[0].distance, 1.25);
+    assert.equal(fired.players[0].ammo, 2);
+    assert.equal(fired.projectiles[0].distance, 2.25, "projectiles advance only once per network tick");
+    const arrived = advance(race, 3);
+    assert.deepEqual(arrived.removedObjectIds, ["arrival-1", "arrival-2"]);
+    assert.deepEqual([arrived.players[0].segmentId, arrived.players[0].distance, arrived.players[0].coins], ["orbit", 2, 2]);
+    assert.equal(arrived.players[1].segmentId, "straight", "the trailing runner remains behind the launch gate");
+});
+
+test("fast consecutive collisions break shields and stop exactly at the impact", () => {
+    const track = straightTrack(12, [1, 2, 3, 4].map(distance => ({
+        id: `crate-${distance}`, type: "crate", lane: 1, distance
+    })));
+    track.cruiseSpeed = 25;
+    const race = createRace({ players, track });
+    const impact = advance(race, 3);
+    assert.deepEqual(impact.removedObjectIds, ["crate-1", "crate-2", "crate-3"]);
+    assert.equal(impact.players[0].distance, 3);
+    assert.equal(impact.players[0].shield, 0);
+    assert.equal(impact.players[0].stunRemainingMs, 1500);
+    assert.equal(race.step().players[0].distance, 3, "remaining movement slices respect stun");
+});
+
 test("barriers phase an intact runner, then a shield break stuns and protects recovery", () => {
     const track = straightTrack(25, [
         ...[1, 3, 5, 6, 12].map(distance => ({ id: `pipe-${distance}`, type: "barrier", lane: 1, distance })),
