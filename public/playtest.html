@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Edgerunner · City to the Crystal Palace</title><link rel="stylesheet" href="/playtest.css">
+</head>
+<body>
+<main>
+  <header><div><p class="eyebrow">EDGERUNNER / WORLD PLAYTEST</p><h1>City to the Crystal Palace<span>.</span></h1></div><a href="#design">Explore the art ↓</a></header>
+  <nav class="stages" aria-label="Course stages"><span data-stage="slums">01 <b>The Slums</b></span><span data-stage="downtown">02 <b>Downtown</b></span><span data-stage="spaceport">03 <b>Spaceport & orbit</b></span></nav>
+  <div class="game-grid">
+    <section class="viewport" aria-label="Playable race">
+      <canvas id="track" width="1100" height="650" tabindex="0" aria-label="Race track. A and D steer, W and S change orbital altitude, F or click fires. L enables immunity; hold Space to accelerate.">Your browser needs Canvas to display the race.</canvas>
+      <div id="overlay"><div class="intro"><p class="eyebrow">LOCAL PLAYTEST / SCRIPTED RIVAL</p><h2 id="overlay-title">From the city floor<br>to the stars.</h2><p id="overlay-copy">Pick your lane. Shoot breakable obstacles. Collect coins and dock before time runs out.</p><button id="start" class="primary">Start race ↗</button><div id="results" hidden></div></div></div>
+      <div class="scene-label"><span id="route">Drainage basin</span><time id="clock">3:00</time></div>
+    </section>
+    <aside>
+      <div class="panel"><label for="course">Start point</label><select id="course"><option value="full">Full three-stage course</option><option value="slums">Slums only</option><option value="downtown">Downtown only</option><option value="spaceport">Spaceport and orbit</option><option value="atmosphere">Atmospheric ascent → orbit</option><option value="orbit">Orbit only (three altitudes)</option></select><p id="course-info">20 shared coins · 73.5 seconds before impacts</p></div>
+      <div class="panel player cyan"><div class="player-heading"><b>01 / YOU</b><span id="cyan-coins">0 coins</span></div><div class="progress"><i id="cyan-progress"></i></div><div id="cyan-shield">Shield 3 / 3</div><div id="cyan-ammo">Ammo 3 / 3</div><p id="cyan-state"></p></div>
+      <div class="panel player magenta"><div class="player-heading"><b>02 / RIVAL</b><span id="magenta-coins">0 coins</span></div><div class="progress"><i id="magenta-progress"></i></div><div id="magenta-shield">Shield 3 / 3</div><div id="magenta-ammo">Ammo 3 / 3</div><p id="magenta-state"></p></div>
+      <div class="panel instructions"><h3>Basic kit</h3><p><kbd>A</kbd> <kbd>D</kbd> Change lanes<br><kbd>W</kbd> <kbd>S</kbd> Altitude in orbit<br><kbd>F</kbd> or click track to fire<br><kbd>L</kbd> Immunity · hold <kbd>Space</kbd> for 1.5× speed<br><kbd>C</kbd> Practice cheat</p><p>Three rounds. One reload per second. Glass and crates break; solid obstacles block shots.</p></div>
+    </aside>
+  </div>
+  <div class="under-game"><p id="message" role="status">Ready. Every lane follows the full course.</p><div class="buttons"><button data-action="left" aria-label="Steer left">←</button><button data-action="right" aria-label="Steer right">→</button><button data-action="up" aria-label="Higher altitude">↑</button><button data-action="down" aria-label="Lower altitude">↓</button><button data-action="fire">Fire</button><button id="cheat" data-action="toggleCheat">Cheat off</button><button id="restart">Restart</button></div></div>
+  <section id="design"><div class="section-heading"><div><p class="eyebrow">WORLD & CHARACTER DESIGN</p><h2>One city. Three worlds.</h2></div><p>Ground lanes give way to open flight.<br>The cyan and magenta identities stay with you.</p></div>
+    <div class="art-grid">
+      <article><a href="/assets/slums.png"><img src="/assets/slums.png" alt="The Slums: a rain-soaked drainage basin with scaffold ramps" loading="lazy"></a><div><p class="eyebrow">01 / THE SLUMS</p><h3>Climb out of the basin.</h3><p>Copper tokens, patched shelters and exposed pipework. Follow the market channel and climb through the service gate.</p><pre>Basin → Market → Service gate</pre></div></article>
+      <article><a href="/assets/downtown.png"><img src="/assets/downtown.png" alt="Downtown: ceramic boulevards, glass towers and elevated terraces" loading="lazy"></a><div><p class="eyebrow">02 / DOWNTOWN</p><h3>Race beneath the skyline.</h3><p>Glass towers frame a broad boulevard. Collect seven City Credits across the plaza, boulevard and spaceport approach.</p><pre>Plaza → Boulevard → Spaceport access</pre></div></article>
+      <article><a href="/assets/spaceport.png"><img src="/assets/spaceport.png" alt="Spaceport and orbit: Earth's curve and the Crystal Palace docking ring" loading="lazy"></a><div><p class="eyebrow">03 / SPACEPORT & ORBIT</p><h3>Launch toward the Palace.</h3><p>Launch through clouds and dodge crossing spacecraft in four lanes. At orbit entry, W/S unlocks three altitudes; shoot through debris on the way to the Palace.</p><pre>Hangar → Atmosphere → Orbit → Palace</pre></div></article>
+    </div>
+    <figure class="character-board"><a href="/assets/character-design.png"><img src="/assets/character-design.png" alt="Cyan and magenta runner and shuttle designs with alternate views" loading="lazy"></a><figcaption>Two parallel stripes and a swept silhouette for Cyan. A diagonal stripe and broader silhouette for Magenta. Basic guns and shields carry the visual language from ground to orbit.</figcaption></figure>
+  </section>
+  <footer>Edgerunner · COMP4021 · Local map and art playtest · Multiplayer matches use the same course through the existing server.</footer>
+</main><script src="/race-client.js?v=20261126-controls-1"></script><script src="/js/race-motion.js?v=20261126-controls-1"></script><script src="/js/race-renderer.js?v=20261126-controls-1"></script><script src="/playtest.js?v=20261126-controls-1"></script>
+</body></html>

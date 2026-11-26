@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edgerunner · Live race</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/socket.io/socket.io.js" defer></script>
+  <script src="/js/race-motion.js?v=20261126-controls-1" defer></script>
+  <script src="/js/race-renderer.js?v=20261126-controls-1" defer></script>
+  <script src="/js/game.js?v=20261126-controls-1" defer></script>
+</head>
+<body class="game-page">
+  <main class="game-shell">
+    <header class="game-topbar">
+      <div>
+        <p class="eyebrow">EDGERUNNER / LIVE MULTIPLAYER</p>
+        <h1>City to the Crystal Palace<span>.</span></h1>
+        <p class="game-subtitle">Race through the Slums and Downtown, then launch through the Spaceport into orbit.</p>
+      </div>
+      <a class="back-link" href="/lobby.html">← Return to lobby</a>
+    </header>
+
+    <nav class="track-steps" aria-label="Course stages">
+      <span data-stage="slums"><small>01</small><b>The Slums</b></span>
+      <span data-stage="downtown"><small>02</small><b>Downtown</b></span>
+      <span data-stage="spaceport"><small>03</small><b>Spaceport & orbit</b></span>
+    </nav>
+
+    <div class="game-grid">
+      <section class="game-viewport" aria-label="Live multiplayer race">
+        <canvas id="race-canvas" width="1100" height="650" tabindex="0" aria-label="Live race track. Owner uses WASD, guest uses arrow keys. L grants immunity; hold Space to accelerate. F or Enter fires.">
+          Your browser needs Canvas to display the race.
+        </canvas>
+        <div id="waiting-overlay" class="waiting-overlay">
+          <div class="waiting-copy">
+            <p class="eyebrow">ROOM MATCH / SERVER-SYNCED</p>
+            <h2 id="waiting-title">Waiting for race data.</h2>
+            <p id="waiting-copy">Your paired race will appear here as soon as the server sends its starting snapshot.</p>
+            <p id="game-status" role="status" aria-live="polite">Connecting to the race server…</p>
+          </div>
+        </div>
+        <div class="scene-label" aria-hidden="true">
+          <span id="route-label">The Slums · waiting for route</span>
+          <time id="timer">--:--</time>
+        </div>
+      </section>
+
+      <aside class="dashboard" aria-label="Race dashboard">
+        <section class="panel race-panel">
+          <p class="panel-kicker">CURRENT COURSE</p>
+          <h2 id="current-stage">The Slums</h2>
+          <p id="race-state">Waiting for both runners…</p>
+        </section>
+
+        <section class="panel runner-card runner-you" aria-labelledby="you-heading">
+          <div class="runner-heading"><b id="you-heading">01 / YOU</b><span id="you-coins">— coins</span></div>
+          <div class="runner-progress" aria-label="Your race progress"><i id="you-progress"></i></div>
+          <div class="runner-stats"><span id="you-shield">Shield — / 3</span><span id="you-score">Score —</span></div>
+          <p id="you-ammo" class="runner-ammo">Ammo — / 3</p>
+          <p id="you-state" class="runner-state">Waiting for your runner…</p>
+        </section>
+
+        <section class="panel runner-card runner-rival" aria-labelledby="rival-heading">
+          <div class="runner-heading"><b id="rival-heading">02 / OPPONENT</b><span id="rival-coins">— coins</span></div>
+          <div class="runner-progress" aria-label="Opponent race progress"><i id="rival-progress"></i></div>
+          <div class="runner-stats"><span id="rival-shield">Shield — / 3</span><span id="rival-score">Score —</span></div>
+          <p id="rival-ammo" class="runner-ammo">Ammo — / 3</p>
+          <p id="rival-state" class="runner-state">Waiting for the other runner…</p>
+        </section>
+
+        <section class="panel controls-panel" aria-labelledby="controls-heading">
+          <h2 id="controls-heading">Basic kit</h2>
+          <p id="control-role"></p><p id="control-scope" class="controls-note"></p>
+          <p>Owner: <kbd>A</kbd> <kbd>D</kbd> lanes, <kbd>W</kbd> <kbd>S</kbd> altitude, <kbd>F</kbd> fire<br>Guest: <kbd>←</kbd> <kbd>→</kbd> lanes, <kbd>↑</kbd> <kbd>↓</kbd> altitude, <kbd>Enter</kbd> fire<br><kbd>L</kbd> enables immunity<br>Hold <kbd>Space</kbd> for 1.5× speed while immune<br>Click the track to fire. <kbd>C</kbd> retains the practice-only 2× cheat.</p>
+          <p class="controls-note">Altitude unlocks in orbit. L and Space affect the signed-in player. Release Space to return to normal speed. Three rounds; one reload per second.</p>
+          <div class="touch-controls" aria-label="Race controls">
+            <button type="button" data-action="left" aria-label="Move left">←</button>
+            <button type="button" data-action="right" aria-label="Move right">→</button>
+            <button type="button" data-action="up" aria-label="Higher altitude">↑</button>
+            <button type="button" data-action="down" aria-label="Lower altitude">↓</button>
+            <button type="button" data-action="fire">Fire</button>
+            <button type="button" data-action="enableImmunity">L · Immunity</button>
+            <button type="button" data-action="toggleCheat" id="cheat-button">Cheat off</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <p id="game-message" class="game-message" role="status" aria-live="polite">Join your room and get ready for the run.</p>
+
+    <section id="results-panel" class="results-panel" hidden aria-labelledby="results-heading">
+      <div class="results-heading">
+        <div><p class="eyebrow">RACE COMPLETE</p><h2 id="results-heading">Final standings</h2></div>
+        <a class="primary-link" href="/lobby.html">Return to lobby</a>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Rank</th><th>Runner</th><th>Time</th><th>Coins</th><th>Score</th><th>Stuns</th><th>Cheat</th></tr></thead>
+        <tbody id="results-body"></tbody>
+      </table></div>
+      <a class="home-link" href="/">Return home</a>
+    </section>
+
+    <section class="art-section" aria-labelledby="art-heading">
+      <div class="art-section-heading">
+        <div><p class="eyebrow">WORLD & RUNNER DESIGN</p><h2 id="art-heading">One city. Three worlds.</h2></div>
+        <p>The cyan and magenta racers cross the Slums and Downtown before launching toward the Crystal Palace.</p>
+      </div>
+      <div class="art-grid">
+        <article class="art-card">
+          <a href="/assets/slums.png"><img src="/assets/slums.png" alt="The Slums: a rain-soaked drainage basin with scaffold ramps" loading="lazy"></a>
+          <div><p class="eyebrow">01 / THE SLUMS</p><h3>Climb out of the basin.</h3><p>Race through the market channel. Watch your lane and collect the coins along the way.</p></div>
+        </article>
+        <article class="art-card">
+          <a href="/assets/downtown.png"><img src="/assets/downtown.png" alt="Downtown glass towers and garden terraces" loading="lazy"></a>
+          <div><p class="eyebrow">02 / DOWNTOWN</p><h3>Race beneath the skyline.</h3><p>Follow the boulevard, shoot glass obstacles and steer around abandoned vehicles.</p></div>
+        </article>
+        <article class="art-card">
+          <a href="/assets/spaceport.png"><img src="/assets/spaceport.png" alt="Spaceport and orbit above Earth" loading="lazy"></a>
+          <div><p class="eyebrow">03 / SPACEPORT & ORBIT</p><h3>Launch toward the Palace.</h3><p>Launch through the atmosphere and dodge crossing spacecraft in four lanes. In orbit, W/S unlocks three altitudes for the run to the docking ring.</p></div>
+        </article>
+        <article class="art-card runner-art">
+          <a href="/assets/racers.png"><img src="/assets/racers.png" alt="Cyan and magenta Edgerunner character designs" loading="lazy"></a>
+          <div><p class="eyebrow">RUNNER PAIR</p><h3>Stay side by side.</h3><p>The same runner artwork appears in the live Canvas view; your opponent is the other connected player.</p></div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="game-footer">Edgerunner · COMP4021 · Multiplayer race state is sent by the room server.</footer>
+    <audio id="coin-audio" src="/assets/sounds/coin.wav" preload="auto"></audio>
+    <audio id="impact-audio" src="/assets/sounds/impact.wav" preload="auto"></audio>
+  </main>
+</body>
+</html>

@@ -1,50 +1,60 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Lobby - Edgerunner: Race to the Crystal Palace</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Match lobby · Edgerunner</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/socket.io/socket.io.js" defer></script>
+  <script src="/js/lobby.js?v=20261126-controls-1" defer></script>
 </head>
+<body class="lobby-page">
+  <main class="page-shell lobby-shell">
+    <section class="intro lobby-intro" aria-labelledby="lobby-title">
+      <div class="lobby-topline">
+        <p class="eyebrow">EDGERUNNER / MATCHMAKING</p>
+        <a href="/" class="home-link">Home ↗</a>
+      </div>
+      <h1 id="lobby-title">Find your<br>rival<span>.</span></h1>
+      <p id="welcome" class="welcome-chip">Checking your session…</p>
+      <p id="lobby-message" class="message" role="status" aria-live="polite"></p>
+      <div class="lobby-art">
+        <img src="/assets/slums.png" alt="The Slums course where the Edgerunner race begins">
+        <div class="art-caption"><span>THREE-STAGE COURSE</span><b>Slums → Downtown → Spaceport & orbit</b></div>
+      </div>
+      <div class="lobby-tip"><span class="tip-mark">↗</span><p><b>Keep moving. Keep firing.</b><br>All lanes lead through the Slums, Downtown and orbit. Steer to collect coins and avoid solid obstacles.</p></div>
+      <button id="sign-out" class="signout-button" type="button">Sign out</button>
+    </section>
 
-<body>
-    <!-- Placeholder lobby: just enough for the signed-in flow to land somewhere.
-         Room codes, the member list and the ready control belong to the page owner. -->
-    <h1>Lobby</h1>
-    <p id="status">Checking your session...</p>
-    <p><button id="sign-out" type="button" hidden>Sign out</button></p>
+    <section class="auth-panel room-card" aria-labelledby="room-heading">
+      <p class="eyebrow">ROOM SETUP</p>
+      <h2 id="room-heading">Create or join a room.</h2>
+      <p class="room-intro">Pair up with another runner. Both players need to be ready before the race begins.</p>
 
-    <script>
-        const statusLine = document.getElementById('status');
-        const signOutButton = document.getElementById('sign-out');
+      <label class="inline-option practice-option"><input id="practice" type="checkbox"><span><b>Practice room</b><small>Enables the speed cheat for this match.</small></span></label>
+      <label class="inline-option"><input id="manual-test" type="checkbox"><span><b>Same-device manual test</b><small>Keep two browser windows. Either focused window sends WASD to the owner and arrow keys to the guest. Both accounts must stay connected.</small></span></label>
 
-        async function showSession() {
-            const response = await fetch('/api/session');
-            const body = await response.json();
+      <button id="create-room" class="button-primary" type="button">Create a room <span aria-hidden="true">↗</span></button>
 
-            if (!body.signedIn) {
-                statusLine.textContent = 'You are not signed in. ';
-                const link = document.createElement('a');
-                link.href = '/';
-                link.textContent = 'Back to the home page';
-                statusLine.append(link);
-                return;
-            }
+      <div class="room-divider"><span>OR JOIN WITH A CODE</span></div>
+      <form id="join-form" class="join-form">
+        <label for="room-code">Room code<input id="room-code" name="code" maxlength="6" required autocomplete="off" placeholder="e.g. A7K2QF"></label>
+        <button class="button-secondary" type="submit">Join room</button>
+      </form>
 
-            statusLine.textContent = `Signed in as ${body.account.username}.`;
-            signOutButton.hidden = false;
-        }
+      <section id="room-panel" class="room-panel" hidden aria-live="polite">
+        <div class="room-code-heading"><div><p class="eyebrow">YOUR ROOM</p><h3>Room <strong id="room-code-display">------</strong></h3></div><span class="room-live-dot" aria-label="Room active"></span></div>
+        <p id="room-phase">Waiting for another player</p>
+        <p id="room-controls"></p>
+        <ul id="member-list"></ul>
+        <div class="room-panel-actions">
+          <button id="ready-button" class="button-primary" type="button">Ready</button>
+          <button id="leave-room" class="button-secondary" type="button">Leave room</button>
+        </div>
+      </section>
 
-        signOutButton.addEventListener('click', async () => {
-            const response = await fetch('/api/logout', { method: 'POST' });
-            const body = await response.json();
-            window.location.assign(body.redirect || '/');
-        });
-
-        showSession().catch(() => {
-            statusLine.textContent = 'The server could not be reached.';
-        });
-    </script>
+      <p class="room-footnote">Need an opponent? Share your room code with a teammate.</p>
+    </section>
+  </main>
 </body>
-
 </html>

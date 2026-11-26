@@ -1,16 +1,52 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Edgerunner: Race to the Crystal Palace</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edgerunner · Race to the Crystal Palace</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/js/auth.js" defer></script>
 </head>
+<body class="landing-page">
+  <main class="page-shell landing-shell">
+    <section class="intro landing-intro" aria-labelledby="landing-title">
+      <p class="eyebrow">EDGERUNNER / COMP4021</p>
+      <h1 id="landing-title">City to the<br>Crystal Palace<span>.</span></h1>
+      <p class="landing-lede">Race through the Slums and Downtown, launch through the atmosphere into orbit, and reach the Crystal Palace before your rival.</p>
+      <div class="landing-art">
+        <img src="/assets/slums.png" alt="The Slums race course beneath the Crystal Palace skyline">
+        <div class="art-caption"><span>01 / THE SLUMS</span><b>Two runners. One way out.</b></div>
+      </div>
+      <div class="landing-facts" aria-label="Race features">
+        <span><b>2</b> live runners</span>
+        <span><b>3</b> course stages</span>
+        <span><b>~3 min</b> per run</span>
+      </div>
+      <p class="controls-hint"><strong>Controls</strong><br>Owner: WASD and F to fire. Guest: arrow keys and Enter to fire. L enables immunity; hold Space for 1.5× acceleration. Altitude unlocks in orbit. Same-device test rooms relay both keyboard schemes from either focused game window.</p>
+    </section>
 
-<body>
-    <h1>Edgerunner: Race to the Crystal Palace</h1>
-    <p>Placeholder page served by the server skeleton.</p>
-    <p>The home page, lobby, game page and results page are built by the page owner.</p>
+    <section class="auth-panel auth-card" aria-labelledby="auth-heading">
+      <p class="eyebrow">PLAYER ACCESS</p>
+      <h2 id="auth-heading">Your next run starts here.</h2>
+      <p class="auth-intro">Sign in to join a room, or create an account to get started.</p>
+      <div class="form-switch" role="group" aria-label="Choose sign in or registration">
+        <button type="button" data-show-form="login-form" aria-pressed="true">Sign in</button>
+        <button type="button" data-show-form="register-form" aria-pressed="false">Register</button>
+      </div>
+      <p id="auth-message" class="message" role="status" aria-live="polite"></p>
+      <form id="login-form" data-endpoint="/api/login">
+        <label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="16"></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="button-primary" type="submit">Sign in <span aria-hidden="true">↗</span></button>
+      </form>
+      <form id="register-form" data-endpoint="/api/register" hidden>
+        <label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="16"></label>
+        <label>Password<input name="password" type="password" autocomplete="new-password" required minlength="8"></label>
+        <label>Confirm password<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="8"></label>
+        <button class="button-primary" type="submit">Create account <span aria-hidden="true">↗</span></button>
+      </form>
+      <p class="auth-footnote"><span aria-hidden="true">●</span> Room matchmaking is ready when you are.</p>
+    </section>
+  </main>
 </body>
-
 </html>
