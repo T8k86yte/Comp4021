@@ -6,6 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "preview": "node preview/server.js",
+    "build:course": "node scripts/build-course.js",
     "test": "node --test"
   },
   "engines": {
