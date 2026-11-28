@@ -145,9 +145,12 @@ A room holds at most two accounts. Membership is keyed by account, so a reconnec
 | `room:join` | `{ "code": "ABC123" }`, case-insensitive | Adds the sender as the second member. Joining the room the player already sits in returns that room again. |
 | `room:leave` | none | Removes the sender from the room. |
 | `room:ready` | `{ "ready": true }` | Sets the ready flag. Only allowed in the waiting phase with two members. |
+| `room:rematch` | none | Asks for another race in the same room. Only allowed in the finished phase with two members; the room restarts when every member has asked. |
 | `race:input` | `{ "matchId": "...", "action": "left" }` | Forwards one action to the race engine, see section 9. |
 
 Every event accepts an acknowledgement callback. When the client passes one it receives `{ "ok": true }` or `{ "ok": false, "error": { "code": ..., "message": ... } }`; without a callback a rejection arrives as a `room:error` event with the same `error` object.
+
+`room:rematch` adds one field to the success acknowledgement: `{ "ok": true, "restarted": false }` means the vote was recorded and the other seat still has to agree, `true` means this vote put the room back to `waiting`. The new room state always arrives as its own `room:state`.
 
 ### 8.2 Server to client
 
@@ -175,9 +178,9 @@ Every event accepts an acknowledgement callback. When the client passes one it r
     { "account": "player1", "host": true, "ready": false, "connected": true },
     { "account": "player2", "host": false, "ready": true, "connected": true }
   ],
-  "cheat": { "active": false, "log": [] },
   "endedAt": null,
-  "results": null
+  "results": null,
+  "rematch": { "votes": [] }
 }
 ```
 
@@ -185,9 +188,10 @@ Every event accepts an acknowledgement callback. When the client passes one it r
 - `countdownEndsAt` is a server timestamp in milliseconds, set while `phase` is `countdown` and cleared afterwards.
 - `matchId` is set when the countdown ends and is kept for the rest of the room's life.
 - `members` is ordered with the host first while the host is present. `connected` follows the account, not the socket.
-- `cheat` carries the room flag and its record; toggling is not implemented yet (section 10).
+- Cheat state is not part of the room. It belongs to each runner and travels in the race snapshots (9.3).
 - `endedAt` is a server timestamp in milliseconds, set when the engine ends the race, and cleared when a new match starts.
 - `results` holds the standings of the finished match in the shape of 9.1, or `null` before the first race ends. A page that loads or reconnects after a race reads them from here instead of waiting for `race:results`.
+- `rematch.votes` lists the accounts that asked for another race since the current one ended. It is cleared when the room restarts, when a member joins or leaves, and when a new race starts.
 
 ### 8.4 Refusals
 
@@ -199,6 +203,7 @@ Every event accepts an acknowledgement callback. When the client passes one it r
 | `not_in_room` | The account sits in no room |
 | `ready_locked` | Ready is disabled once the countdown has started |
 | `waiting_for_opponent` | A second player has to join before the race can start |
+| `rematch_unavailable` | The room has not reached the finished phase, so there is nothing to replay |
 
 Leaving during the countdown cancels it and returns the room to `waiting`. A disconnect during the countdown does not cancel it: the countdown finishes and the missing player keeps the seat, marked `connected: false`.
 
@@ -217,7 +222,7 @@ Inputs are `left`, `right`, `fire`, `up`, `down`, `enableImmunity`, `boostStart`
 
 Player snapshots add `mode` (`ground`/`flight`), `altitude` (0 on ground; 0–2 in flight), `maxShield`, `ammo`, `maxAmmo`, and `ammoRefillMs`. Existing shield, score, phase, stun, recovery and finish fields remain. `projectiles` contains active `{ id, playerId, segmentId, lane, altitude, distance }` shots. `removedObjectIds` includes terrain destroyed by shots. New tick events are `shotFired`, `shotHit`, `stageChanged`, and `launched`. Bootstrap has the same full state and suppresses replay of old tick events.
 
-When `snapshot.status` is `ended`, `snapshot.results` contains the ordered standings. Per-player `immunityActive`, `boostActive`, `cheatActive` and `usedCheat` are authoritative; the room-level `cheat` object remains a legacy placeholder.
+When `snapshot.status` is `ended`, `snapshot.results` contains the ordered standings. Per-player `immunityActive`, `boostActive`, `cheatActive` and `usedCheat` are authoritative.
 
 ### 9.1 Results payload
 
@@ -266,8 +271,53 @@ The two cases differ in the room, not in the race:
 
 The room itself is not destroyed while a race is running, even when only one seat remains. It closes when the last member leaves.
 
-## 10. Not implemented yet
+### 9.3 Cheat mode
 
-- The multiplayer Canvas/results pages. A separate local map playtest is available with `npm run preview`.
-- Rematch: resetting a finished room for another race, and whether both players have to agree first.
-- Overall ranking across races: the server keeps the current room only and stores no history.
+Cheat is a per-runner state owned by the race engine. The room holds no cheat flag.
+
+- In a practice room (`practice: true` on `room:create`), `race:input` with `action: "toggleCheat"` toggles a 2× forward-speed cheat for the sender's own runner. Outside practice rooms the engine rejects that action and the flag stays off.
+- `action: "enableImmunity"` (the `L` key) works in ordinary and practice rooms. It clears stun and slow effects, restores the shield, and marks that runner as having used the cheat. Holding `Space` then gives 1.5× speed while held, and releasing it restores normal speed.
+- Immunity replaces the practice cheat: once a runner has enabled immunity, `toggleCheat` is no longer accepted for that runner.
+- Both flags reset when a race starts, so nothing carries into the next race.
+- Every snapshot reports `cheatActive`, `immunityActive`, `boostActive` and `usedCheat` per runner. The page renders its own HUD from those fields, and `usedCheat` reaches the results payload of 9.1, so the results page can show who used it.
+- The server trusts no client-supplied effect: an action only asks for a change, and the engine applies it. A runner can only change its own state; cross-seat control exists only for movement and firing in `manualTest` rooms (section 9).
+
+## 10. GET /api/standings
+
+Returns the overall ranking, ordered by total score, then wins, then account name. No request body and no session are needed: the payload holds account names and race totals only, which the results page already shows to both players.
+
+Query: `?limit=20`, optional, clamped to 1 to 100.
+
+```json
+{
+  "ok": true,
+  "standings": [
+    {
+      "position": 1,
+      "account": "player1",
+      "races": 3,
+      "wins": 2,
+      "totalScore": 31,
+      "bestScore": 15,
+      "bestRank": 1,
+      "coins": 21,
+      "lastRacedAt": 1700000000000
+    }
+  ],
+  "scope": {
+    "practiceExcluded": true,
+    "storage": "memory",
+    "order": "total score, then wins"
+  }
+}
+```
+
+- One entry per account, updated once per finished race with the results of 9.1.
+- Practice rooms are left out, because the speed cheat is allowed there.
+- The totals live in server memory. A restart clears them and nothing is written to `data/`.
+- A race that ends after a seat was removed still counts for the players named in its results.
+
+## 11. Not implemented yet
+
+- An overall ranking that survives a restart. The in-memory totals of section 10 are the current state.
+- Any per-room cheat setting. 9.3 fixes cheat as a per-runner state, so a room cannot enable or forbid it beyond choosing practice or ordinary.

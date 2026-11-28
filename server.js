@@ -12,6 +12,7 @@ const { enforceSingleSession, isSignedIn } = require('./lib/sessionGuard');
 const socketRegistry = require('./lib/socketRegistry');
 const { registerRoomHandlers } = require('./lib/roomSocket');
 const authRoutes = require('./routes/auth');
+const standingsRoutes = require('./routes/standings');
 const { raceClientSource } = require('./lib/raceClient');
 
 const PORT = Number(process.env.PORT) || 8000;
@@ -48,6 +49,7 @@ app.get('/race-client.js', (request, response) => response.type('js').send(raceC
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api', authRoutes);
+app.use('/api/standings', standingsRoutes);
 
 // Every route answers in JSON, so unexpected failures do the same instead of
 // returning the default HTML error page.
