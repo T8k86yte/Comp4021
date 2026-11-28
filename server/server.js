@@ -4,7 +4,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '../public');
 const { raceClientSource } = require('../lib/raceClient');
 const port = Number(process.argv[2]) || 8010;
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.wav': 'audio/wav' };
 http.createServer((request, response) => {
   const pathname = new URL(request.url, 'http://localhost').pathname;
   response.setHeader('Cache-Control', 'no-store');

@@ -9,15 +9,27 @@ const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 // Run the actual browser scripts against recorded Canvas calls and socket events.
-async function client(username = 'player1') {
+async function client(username = 'player1', { missingSounds = false } = {}) {
   const html = read('public/game.html');
   const images = [], text = [], rectangles = [], strokes = [], sent = [], handlers = {}, windowHandlers = {};
+  const audio = { played: [], requested: [], resumes: 0 };
+  class AudioContext {
+    state = 'suspended';
+    currentTime = 10;
+    destination = {};
+    resume() { this.state = 'running'; audio.resumes++; return Promise.resolve(); }
+    decodeAudioData(data) { return Promise.resolve(data); }
+    createBufferSource() {
+      return { connect() {}, disconnect() {}, start() { audio.played.push(this.buffer.url); } };
+    }
+  }
   let now=100,animationFrame;
   function element(dataset = {}) {
     return { dataset, style: {}, attributes: {}, children: [], listeners: {}, textContent: '', hidden: true,
       classList: { add() {} }, matches() { return false; }, focus() {}, scrollIntoView() {},
       addEventListener(event, callback) { this.listeners[event] = callback; },
       removeAttribute(name) { delete this.attributes[name]; },
+      getAttribute(name) { return this.attributes[name] ?? null; },
       setAttribute(name, value) { this.attributes[name] = value; },
       append(child) { this.children.push(child); }, replaceChildren() { this.children = []; },
       play() { return Promise.resolve(); } };
@@ -54,16 +66,22 @@ async function client(username = 'player1') {
       ? { width: 0, height: 0, getContext: () => new Proxy({}, { get: (target,key) => target[key] ?? (() => {}) }) }
       : element()
   };
-  const window = { addEventListener(event, callback) { windowHandlers[event] = callback; }, requestAnimationFrame(callback) { animationFrame=callback; }, location: { replace() {} } };
+  const window = { AudioContext, addEventListener(event, callback) { windowHandlers[event] = callback; }, requestAnimationFrame(callback) { animationFrame=callback; }, location: { replace() {} } };
   const context = vm.createContext({ window, document, Image, performance: { now: () => now },
     io: () => ({ on(event, callback) { handlers[event] = callback; }, emit(event, payload) { sent.push({ event, ...payload }); } }),
-    fetch: async () => ({ ok: true, json: async () => ({ signedIn: true, account: { username } }) }) });
+    fetch: async url => {
+      if (url === '/api/session') return { ok: true, json: async () => ({ signedIn: true, account: { username } }) };
+      const pathname = new URL(url, 'http://local').pathname;
+      audio.requested.push(pathname);
+      return { ok: !missingSounds && fs.existsSync(path.join(root, 'public', pathname)), arrayBuffer: async () => ({ url: pathname }) };
+    } });
   vm.runInContext(read('public/js/race-motion.js'), context);
   vm.runInContext(read('public/js/race-renderer.js'), context);
+  vm.runInContext(read('public/js/race-audio.js'), context);
   vm.runInContext(read('public/js/game.js'), context);
   await new Promise(resolve => setImmediate(resolve));
   const drawFrame=vm.runInContext('(time,moving) => renderer.draw(track,snapshot,account,time,moving)',context);
-  return { elements, stages, images, text, rectangles, strokes, sent, handlers,
+  return { elements, stages, images, text, rectangles, strokes, sent, handlers, audio,
     frame(time, moving = true) { drawFrame(time,moving); },
     appFrame(time) { now=time;animationFrame(time); },
     bootstrap(snapshot, matchId = 'test-match', track = course, controls) { handlers['race:bootstrap']({ matchId, track, snapshot, controls }); },
@@ -93,6 +111,107 @@ test('multiplayer renders every course segment with its stage artwork and runner
     assert.equal(browser.elements.get('.runner-you').style.color, '#ff79d2');
     assert.equal(browser.elements.get('.runner-rival').style.color, '#65eff1');
   }
+});
+
+test('gameplay gestures enable local coin and impact sounds, with one sound per crate collision', async () => {
+  for (const username of ['player1', 'player2']) {
+    const browser = await client(username);
+    const snapshot = raceAt('slums-basin').getSnapshot();
+    browser.bootstrap(snapshot);
+    const update = events => browser.handlers['race:update']({ matchId: 'test-match', snapshot: { ...snapshot, tick: ++snapshot.tick, events } });
+    update([{ type: 'coinCollected', playerId: username }]);
+    assert.deepEqual(browser.audio.played, [], 'audio waits for a gesture without queuing old pickups');
+    browser.key(username === 'player1' ? 'a' : 'ArrowLeft');
+    assert.equal(browser.audio.resumes, 1);
+    assert.deepEqual(browser.audio.played, []);
+    update([
+      { type: 'coinCollected', playerId: username },
+      { type: 'crateBroken', playerId: username, objectId: 'crash' },
+      { type: 'impact', playerId: username, objectId: 'crash' },
+      { type: 'shotFired', playerId: username, projectileId: 'bolt-1' },
+      { type: 'crateBroken', playerId: username, objectId: 'slums-basin-crate-1', source: 'shot' },
+      { type: 'shotHit', playerId: username, objectId: 'target' },
+      { type: 'coinCollected', playerId: username === 'player1' ? 'player2' : 'player1' },
+      { type: 'impact', playerId: username === 'player1' ? 'player2' : 'player1' },
+      { type: 'shotFired', playerId: username === 'player1' ? 'player2' : 'player1' },
+      { type: 'crateBroken', source: 'shot', objectId: 'slums-basin-crate-1', playerId: username === 'player1' ? 'player2' : 'player1' }
+    ]);
+    assert.deepEqual(browser.audio.played, ['/sounds/coin.wav', '/sounds/impact.wav', '/sounds/laser.wav', '/sounds/wood-break.wav']);
+    update([{ type: 'coinCollected', playerId: username }]);
+    assert.equal(browser.audio.played.length, 5, 'a later pickup can overlap a playing sound');
+  }
+});
+
+test('repeated, stale and reconnect snapshots do not replay sounds, and a new match starts fresh', async () => {
+  const browser = await client();
+  const snapshot = raceAt('slums-basin').getSnapshot();
+  snapshot.events = [{ type: 'coinCollected', playerId: 'player1' }];
+  snapshot.tick = 10;
+  browser.bootstrap(snapshot);
+  browser.pointer();
+  const update = (tick, matchId = 'test-match') => browser.handlers['race:update']({ matchId, snapshot: { ...snapshot, tick } });
+  update(10); update(9);
+  assert.equal(browser.audio.played.length, 0, 'bootstrap events are historical');
+  update(11); update(11); update(10); update(12, 'old-match');
+  assert.equal(browser.audio.played.length, 1);
+  browser.bootstrap({ ...snapshot, tick: 20 });
+  update(20); update(19); update(21);
+  assert.equal(browser.audio.played.length, 2, 'only live events after reconnect play');
+  browser.bootstrap({ ...snapshot, tick: 0 }, 'next-match');
+  update(1, 'next-match');
+  assert.equal(browser.audio.played.length, 3);
+});
+
+test('unavailable sound assets do not stop controls or race updates', async () => {
+  const browser = await client('player1', { missingSounds: true });
+  const snapshot = raceAt('slums-basin').getSnapshot();
+  browser.bootstrap(snapshot);
+  browser.click('left');
+  snapshot.tick++;
+  snapshot.players[0].coins = 1;
+  snapshot.events = [{ type: 'coinCollected', playerId: 'player1' }];
+  browser.handlers['race:update']({ matchId: 'test-match', snapshot });
+  assert.equal(browser.sent.at(-1).action, 'left');
+  assert.equal(browser.elements.get('#you-coins').textContent, '1 coins');
+  assert.deepEqual(browser.audio.played, []);
+});
+
+test('destruction uses the target material even after its shooter enters another stage', async () => {
+  const browser = await client();
+  const snapshot = raceAt('spaceport-hangar').getSnapshot();
+  browser.bootstrap(snapshot);
+  browser.key('f');
+  assert.deepEqual(browser.audio.played, [], 'attempting to fire waits for an authoritative shot event');
+  for (const [segmentId, visual, expected] of [
+    ['slums-basin', 'scrap-crate', 'wood-break'], ['downtown-plaza', 'glass', 'glass-break'],
+    ['spaceport-hangar', 'cargo', 'cargo-break'], ['orbit-debris', 'debris', 'debris-break'],
+    ['orbit-debris', 'satellite-hull', 'satellite-break'], ['orbit-dock', 'satellite-hull', 'satellite-break']
+  ]) {
+    const object = course.segments[segmentId].objects.find(object => object.type === 'crate' && object.visual === visual);
+    assert.ok(object, segmentId + ' contains a breakable object');
+    snapshot.events = [
+      { type: 'crateBroken', source: 'shot', playerId: 'player1', objectId: object.id },
+      { type: 'shotHit', playerId: 'player1', objectId: object.id }
+    ];
+    snapshot.tick++;
+    const before = browser.audio.played.length;
+    browser.handlers['race:update']({ matchId: 'test-match', snapshot });
+    assert.equal(browser.audio.played.length, before + 1, 'one destruction sound, no duplicate shotHit');
+    assert.equal(browser.audio.played.at(-1), `/sounds/${expected}.wav`, segmentId);
+  }
+});
+
+test('multiplayer loads only effects and does not start background music', async () => {
+  const browser = await client();
+  assert.equal(browser.elements.has('#music-toggle'), false, 'removed music has no remaining control');
+  assert.deepEqual([...browser.audio.requested].sort(), [
+    '/sounds/cargo-break.wav', '/sounds/coin.wav', '/sounds/debris-break.wav', '/sounds/glass-break.wav',
+    '/sounds/impact.wav', '/sounds/laser.wav', '/sounds/metal-break.wav', '/sounds/satellite-break.wav', '/sounds/wood-break.wav'
+  ]);
+  browser.bootstrap(raceAt('slums-basin').getSnapshot());
+  browser.key('a');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(browser.audio.played, [], 'entering the game and moving do not start a soundtrack');
 });
 
 test('street facades move with distance, remain continuous across segments and stay out of orbit', async () => {
@@ -204,6 +323,9 @@ test('a finished shuttle departs into the hangar before results appear, while a 
   const browser=await client('player2'),clear=structuredClone(course);
   clear.startSegmentId='orbit-dock';Object.values(clear.segments).forEach(s=>s.objects=[]);
   const race=createRace({players:[{id:'player1'},{id:'player2'}],track:clear});
+  browser.bootstrap(race.getSnapshot());
+  browser.key('ArrowLeft');
+  await new Promise(resolve => setImmediate(resolve));
   let snapshot;do{snapshot=race.step();}while(snapshot.status!=='ended');
   browser.bootstrap(snapshot);
   assert.equal(browser.elements.get('#results-panel').hidden,true,'results wait for the local arrival');

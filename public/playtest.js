@@ -3,6 +3,7 @@ const { createRace, TICK_MS, track: fullCourse } = window.previewRace;
 const $ = id => document.getElementById(id);
 const canvas = $('track');
 const renderer = window.createRaceRenderer(canvas);
+const raceAudio = window.createRaceAudio();
 let track, race, state, running = false, lastTime = 0, lag = 0, resultsPending = false;
 
 function selectedTrack() {
@@ -69,6 +70,7 @@ function finish() {
 }
 function tick() {
   botInput(); state = race.step();
+  raceAudio.playEvents(state.events, 'cyan', track);
   for (const event of state.events.filter(e => e.playerId === 'cyan')) {
     if (event.type === 'impact') $('message').textContent = event.stunned ? 'Shield broken. Recovering…' : 'Shield absorbed an impact.';
     if (event.type === 'coinCollected') $('message').textContent = 'Coin claimed. Your rival cannot collect it now.';
@@ -78,8 +80,8 @@ function tick() {
   }
   updateHud(); if (state.status === 'ended') finish();
 }
-function start() { reset(); running = true; $('overlay').hidden = true; $('course').disabled = true; $('message').textContent = 'Race started. Stay alert for obstacles ahead.'; canvas.focus(); }
-function input(action) { if (running) race.applyInput('cyan', action); }
+function start() { raceAudio.unlock(); reset(); running = true; $('overlay').hidden = true; $('course').disabled = true; $('message').textContent = 'Race started. Stay alert for obstacles ahead.'; canvas.focus(); }
+function input(action) { raceAudio.unlock(); if (running) race.applyInput('cyan', action); }
 $('start').addEventListener('click', start); $('restart').addEventListener('click', start);
 $('course').addEventListener('change', () => {
   reset(); $('overlay-title').textContent = 'Ready for the next stage.';

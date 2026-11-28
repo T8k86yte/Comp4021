@@ -946,12 +946,22 @@ window.createRaceRenderer = function createRaceRenderer(canvas) {
         visible.push({object:pose?{...object,...pose}:object,z,segment:section});
       }
     };
-    addObjects(segment,0);
-    // Show the original orbital encounters ahead through the unfolding grid.
-    // This gives lane-dodge warning before altitude controls unlock at entry.
-    if(flight && segment.exits){
-      const next=track.segments[segment.exits[0][0]];
-      if(next?.mode==='flight' && next.stage===segment.stage)addObjects(next,segment.length);
+    // Rendering is a view down the continuous road, not a per-segment spawn.
+    // Ground hazards in the next section used to appear only after crossing
+    // its boundary, often just 8–12 cells before collision. Walk the same
+    // lane-preserving corridor until the full view distance is populated.
+    // Gates and branches still hide a different area/route until entry.
+    let section=segment, offset=0;
+    const visited=new Set();
+    while(section && !visited.has(section) && offset-me.distance<VIEW){
+      visited.add(section);
+      addObjects(section,offset);
+      const nextId=section.exits?.[0]?.[0],next=track.segments[nextId];
+      if(gateFor(section) || !next || next.stage!==section.stage || next.mode!==section.mode
+        || next.laneCount!==section.laneCount || section.exits.length!==section.laneCount
+        || section.exits.some(([id,lane],index)=>id!==nextId || lane!==index))break;
+      offset+=section.length;
+      section=next;
     }
     const rivalZ=rivalDistance(local,rival);
     const rivalInRange=rivalZ!==null && Math.abs(rivalZ)<RIVAL_VIEW;
@@ -962,7 +972,7 @@ window.createRaceRenderer = function createRaceRenderer(canvas) {
     // Ground contact belongs under every entity, not on top of a neighbouring
     // sprite when dense rows overlap in the chase camera.
     if(!flight)for(const item of visible)
-      if(item.object && item.object.type!=='coin')groundContact(item.object,item.z,segment);
+      if(item.object && item.object.type!=='coin')groundContact(item.object,item.z,item.segment);
     for (const item of visible) item.player ? drawPlayer(item.player, item.z, segment, time, item.opacity) : drawObject(item.object, item.z, item.segment, time, me);
     for (const shot of state.projectiles || []) drawLaser(shot, me, segment);
     if(docking){

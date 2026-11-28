@@ -323,20 +323,6 @@
       ],
       "objects": [
         {
-          "id": "downtown-plaza-crate-1",
-          "type": "crate",
-          "distance": 10,
-          "lane": 2,
-          "visual": "glass"
-        },
-        {
-          "id": "downtown-plaza-barrier-1",
-          "type": "barrier",
-          "distance": 10,
-          "lane": 3,
-          "visual": "car"
-        },
-        {
           "id": "downtown-plaza-coin-1",
           "type": "coin",
           "distance": 12,
@@ -344,9 +330,23 @@
           "visual": "city-credit"
         },
         {
+          "id": "downtown-plaza-crate-1",
+          "type": "crate",
+          "distance": 20,
+          "lane": 2,
+          "visual": "glass"
+        },
+        {
+          "id": "downtown-plaza-barrier-1",
+          "type": "barrier",
+          "distance": 20,
+          "lane": 3,
+          "visual": "car"
+        },
+        {
           "id": "downtown-plaza-barrier-2",
           "type": "barrier",
-          "distance": 26,
+          "distance": 36,
           "lane": 0,
           "visual": "car"
         },
@@ -611,20 +611,6 @@
       ],
       "objects": [
         {
-          "id": "spaceport-hangar-crate-1",
-          "type": "crate",
-          "distance": 10,
-          "lane": 2,
-          "visual": "cargo"
-        },
-        {
-          "id": "spaceport-hangar-barrier-1",
-          "type": "barrier",
-          "distance": 10,
-          "lane": 3,
-          "visual": "cargo-wall"
-        },
-        {
           "id": "spaceport-hangar-coin-1",
           "type": "coin",
           "distance": 20,
@@ -632,18 +618,25 @@
           "visual": "crystal-shard"
         },
         {
-          "id": "spaceport-hangar-barrier-2",
+          "id": "spaceport-hangar-crate-1",
+          "type": "crate",
+          "distance": 20,
+          "lane": 2,
+          "visual": "cargo"
+        },
+        {
+          "id": "spaceport-hangar-barrier-1",
           "type": "barrier",
-          "distance": 26,
-          "lane": 0,
+          "distance": 20,
+          "lane": 3,
           "visual": "cargo-wall"
         },
         {
-          "id": "spaceport-hangar-crate-2",
-          "type": "crate",
-          "distance": 42,
+          "id": "spaceport-hangar-barrier-2",
+          "type": "barrier",
+          "distance": 36,
           "lane": 0,
-          "visual": "cargo"
+          "visual": "cargo-wall"
         },
         {
           "id": "spaceport-hangar-coin-2",
@@ -653,9 +646,16 @@
           "visual": "crystal-shard"
         },
         {
+          "id": "spaceport-hangar-crate-2",
+          "type": "crate",
+          "distance": 52,
+          "lane": 0,
+          "visual": "cargo"
+        },
+        {
           "id": "spaceport-hangar-barrier-3",
           "type": "barrier",
-          "distance": 42,
+          "distance": 52,
           "lane": 3,
           "visual": "cargo-wall"
         }

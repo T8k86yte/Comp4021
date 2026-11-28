@@ -4,8 +4,7 @@ const socket = io();
 const statusLine = document.querySelector('#game-status');
 const gameMessage = document.querySelector('#game-message');
 const waitingOverlay = document.querySelector('#waiting-overlay');
-const coinAudio = document.querySelector('#coin-audio');
-const impactAudio = document.querySelector('#impact-audio');
+const raceAudio = window.createRaceAudio();
 
 let account = null;
 let matchId = null;
@@ -40,6 +39,7 @@ function sendAction(action, controlSeat = localControlSeat()) {
 }
 
 window.addEventListener('keydown', (event) => {
+  raceAudio.unlock();
   if (event.repeat || event.target.matches('input,button,select,textarea')) return;
   const key = event.key.toLowerCase();
   const owner = { a:'left', d:'right', w:'up', s:'down', f:'fire' }[key];
@@ -55,9 +55,9 @@ window.addEventListener('blur', releaseBoost);
 document.addEventListener('visibilitychange', () => { if (document.hidden) releaseBoost(); });
 
 document.querySelectorAll('[data-action]').forEach((button) => {
-  button.addEventListener('click', () => { sendAction(button.dataset.action); canvas.focus(); });
+  button.addEventListener('click', () => { raceAudio.unlock(); sendAction(button.dataset.action); canvas.focus(); });
 });
-canvas.addEventListener('pointerdown', () => { sendAction('fire'); canvas.focus(); });
+canvas.addEventListener('pointerdown', () => { raceAudio.unlock(); sendAction('fire'); canvas.focus(); });
 
 socket.on('connect', () => {
   statusLine.textContent = 'Connected · waiting for the room race snapshot…';
@@ -79,7 +79,8 @@ socket.on('connect_error', () => {
 socket.on('race:bootstrap', (payload) => {
   boostHeld = false;
   resultsPending = false;
-  if (matchId !== payload.matchId) lastEventTick = -1;
+  // Bootstrap/reconnect events describe the past; don't replay their sounds.
+  lastEventTick = payload.snapshot.tick;
   matchId = payload.matchId;
   track = payload.track;
   snapshot = payload.snapshot;
@@ -191,12 +192,10 @@ function updateHud() {
 }
 
 function playEvents(state) {
-  if (state.tick === lastEventTick) return;
+  if (state.tick <= lastEventTick) return;
   lastEventTick = state.tick;
+  raceAudio.playEvents(state.events, account, track);
   state.events.forEach((event) => {
-    const sound = event.type === 'coinCollected' ? coinAudio
-      : (event.type === 'impact' || event.type === 'crateBroken') ? impactAudio : null;
-    if (sound) { sound.currentTime = 0; sound.play().catch(() => {}); }
     if (event.playerId !== account) return;
     if (event.type === 'stageChanged') gameMessage.textContent = `Entering ${track.stages[event.stage].name}.`;
     const horizontal = localControlSeat() === 0 ? 'A/D' : 'Left/Right';

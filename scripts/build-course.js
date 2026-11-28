@@ -62,10 +62,12 @@ const groundEncounters = {
   'slums-basin': [[18, 0, 3], [34, null, 1]],
   'slums-market': [[12, 0, 1], [28, null, 3], [44, 2, 3], [60, null, 0], [76, 0, 3], [92, null, 1]],
   'slums-gate': [[8, 0, 1], [24, null, 3], [40, 2, 3]],
-  'downtown-plaza': [[10, 2, 3], [26, null, 0]],
+  // Area-entry fades finish at 3.6 cells. Give the newly revealed lanes at
+  // least 16 clear cells before a hazard (also >1 second at 1.5x speed).
+  'downtown-plaza': [[20, 2, 3], [36, null, 0]],
   'downtown-boulevard': [[12, 0, 3], [28, null, 1], [44, 0, 1], [60, null, 3], [76, 2, 3], [92, null, 0], [108, 0, 3]],
   'downtown-access': [[10, 0, 3], [26, null, 1], [42, 0, 1], [58, null, 3]],
-  'spaceport-hangar': [[10, 2, 3], [26, null, 0], [42, 0, 3]]
+  'spaceport-hangar': [[20, 2, 3], [36, null, 0], [52, 0, 3]]
 };
 const groundArt = { slums: ['scrap-crate', 'pipe'], downtown: ['glass', 'car'], spaceport: ['cargo', 'cargo-wall'] };
 for (const [id, rows] of Object.entries(groundEncounters)) {
