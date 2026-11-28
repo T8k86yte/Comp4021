@@ -1,13 +1,14 @@
 'use strict';
 
 // HTTP routes for account handling. Mounted at /api by server.js.
-// UC-01 (register) and UC-02 (sign in) live here; sign out joins them later.
+// UC-01 (register), UC-02 (sign in) and UC-03 (sign out) live here.
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const accountStore = require('../lib/accountStore');
 const { COOKIE_NAME, isSignedIn } = require('../lib/sessionGuard');
 const socketRegistry = require('../lib/socketRegistry');
+const rooms = require('../lib/rooms');
 const { MESSAGES, validateLogin, validateRegistration } = require('../lib/validation');
 
 const BCRYPT_ROUNDS = 10;
@@ -153,7 +154,14 @@ router.post('/login', (request, response, next) => {
         if (error) {
           return next(error);
         }
-        console.log(`[auth] signed in account=${account.username}`);
+        // Any session this account held elsewhere is over from here on, so its
+        // seat is released and its sockets are closed. Without this the account
+        // would keep a seat that no session can act for (UC-02 step 6).
+        const left = rooms.leaveRoom(account.username, 'takeover');
+        const closed = socketRegistry.disconnectAccount(account.username);
+        console.log(
+          `[auth] signed in account=${account.username} sockets=${closed} room=${left.room ? left.room.code : 'none'}`,
+        );
         return response.json(signedInPayload(account));
       });
     })
@@ -181,10 +189,14 @@ router.post('/logout', (request, response, next) => {
     }
     accountStore.clearSessionId(account, sessionId);
     response.clearCookie(COOKIE_NAME);
-    // Room handling is added with UC-04 to UC-06; removing the player from the
-    // room and telling the other player goes here, before the sockets close.
+    // The seat is released before the sockets close, so the other player sees a
+    // room without this account instead of a seat that only turned stale
+    // (UC-03 step 5). leaveRoom broadcasts to the remaining members itself.
+    const left = rooms.leaveRoom(account, 'signout');
     const closed = socketRegistry.disconnectAccount(account);
-    console.log(`[auth] signed out account=${account} sockets=${closed}`);
+    console.log(
+      `[auth] signed out account=${account} sockets=${closed} room=${left.room ? left.room.code : 'none'}`,
+    );
     return response.json({ ok: true, signedIn: false, redirect: '/' });
   });
 });

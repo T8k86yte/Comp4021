@@ -24,6 +24,7 @@ Status: accounts (UC-01 to UC-03), the lobby (UC-04 to UC-06), and the authorita
 
 - The session identifier travels in the cookie `connect.sid`. It is `HttpOnly` and `SameSite=Lax`, and it expires after seven days. The cookie carries the identifier only; the state stays on the server.
 - One account holds one session at a time. Signing in replaces the identifier recorded for the account, and the earlier session stops working at its next request.
+- Signing in also releases the seat the account held. The earlier client is removed from its room, the remaining member is told, and its sockets are closed. One account therefore never occupies two seats.
 - A session that has been replaced is answered with HTTP 401 and the error code `session_terminated`. The cookie is cleared at the same time. The page should send the player back to the home page.
 - The session secret is read from `SESSION_SECRET` in `.env`. A development default is used when the file is absent.
 
@@ -90,7 +91,7 @@ Error codes:
 | `missing_password` | `password` | the password is empty |
 | `invalid_credentials` | `null` | the account does not exist or the password is wrong; both cases give this one message |
 
-Signing in ends any session the account held elsewhere; see section 2.
+Signing in ends any session the account held elsewhere and releases the seat that client held; see section 2.
 
 ## 5. POST /api/logout
 
@@ -104,7 +105,7 @@ Response, HTTP 200:
 
 The session is destroyed, the account forgets its recorded session identifier, the cookie is cleared and every socket of the account is closed. Calling it without a session is harmless and answers the same way. The only exception is a session that was replaced elsewhere: that request is answered with 401 `session_terminated` (section 2) and the session is already gone.
 
-Removing the player from a room is not implemented yet, because rooms do not exist; see section 8.
+Signing out also removes the player from the room it sat in, before the sockets are closed, and the remaining member receives a new `room:state` without that account. When the account was the last member the room is destroyed and its code released. The same happens when the account is signed in somewhere else (section 2). Such a player is not first marked `connected: false`: the seat is gone.
 
 ## 6. GET /api/session
 
@@ -157,6 +158,7 @@ Every event accepts an acknowledgement callback. When the client passes one it r
 | `race:start` | `{ "matchId": "...", "startedAt": 1700000000000, "practice": false }` |
 | `race:bootstrap` | The initial race state for one seat, see section 9 |
 | `race:update` | One snapshot per server tick, see section 9 |
+| `race:results` | The final standings once the engine ends the race, see 9.1 |
 
 ### 8.3 Room state
 
@@ -166,13 +168,16 @@ Every event accepts an acknowledgement callback. When the client passes one it r
   "host": "player1",
   "phase": "waiting",
   "practice": false,
+  "manualTest": false,
   "matchId": null,
   "countdownEndsAt": null,
   "members": [
     { "account": "player1", "host": true, "ready": false, "connected": true },
     { "account": "player2", "host": false, "ready": true, "connected": true }
   ],
-  "cheat": { "active": false, "log": [] }
+  "cheat": { "active": false, "log": [] },
+  "endedAt": null,
+  "results": null
 }
 ```
 
@@ -181,6 +186,8 @@ Every event accepts an acknowledgement callback. When the client passes one it r
 - `matchId` is set when the countdown ends and is kept for the rest of the room's life.
 - `members` is ordered with the host first while the host is present. `connected` follows the account, not the socket.
 - `cheat` carries the room flag and its record; toggling is not implemented yet (section 10).
+- `endedAt` is a server timestamp in milliseconds, set when the engine ends the race, and cleared when a new match starts.
+- `results` holds the standings of the finished match in the shape of 9.1, or `null` before the first race ends. A page that loads or reconnects after a race reads them from here instead of waiting for `race:results`.
 
 ### 8.4 Refusals
 
@@ -212,8 +219,55 @@ Player snapshots add `mode` (`ground`/`flight`), `altitude` (0 on ground; 0–2 
 
 When `snapshot.status` is `ended`, `snapshot.results` contains the ordered standings. Per-player `immunityActive`, `boostActive`, `cheatActive` and `usedCheat` are authoritative; the room-level `cheat` object remains a legacy placeholder.
 
+### 9.1 Results payload
+
+`race:results` is sent once to every remaining seat when the engine ends a match, and the same object is stored in the room state as `results` (8.3). No request is needed and no acknowledgement is expected.
+
+```json
+{
+  "matchId": "ABC123-m1",
+  "endedAt": 1700000000000,
+  "practice": false,
+  "endReason": "bothFinished",
+  "trackId": "slums-prototype",
+  "raceDurationMs": 138000,
+  "results": [
+    {
+      "rank": 1,
+      "account": "player1",
+      "name": "player1",
+      "finished": true,
+      "finishTimeMs": 132150,
+      "progress": 1,
+      "coins": 9,
+      "finishBonus": 6,
+      "score": 15,
+      "stuns": 1,
+      "usedCheat": false
+    }
+  ]
+}
+```
+
+- `results` is ordered by `rank`. The engine can award the same rank twice, and the repeated value is passed through unchanged.
+- `finishTimeMs` is `null` and `finished` is `false` for a player who did not finish.
+- `endReason` is one of `bothFinished`, `finishWindow`, `timeLimit`, or `null`.
+- `usedCheat` reports whether that player used the cheat, which the results page is expected to show.
+- The page-side field list is not settled with the gameplay owner yet. Engine fields are passed through rather than renamed, so a later agreement adds to this shape instead of replacing it.
+
+### 9.2 A player who stops racing
+
+A closed socket and an account that leaves, signs out or is signed in elsewhere are handled the same way by the running race: that runner stops taking input and freezes at its current position, and the remaining player keeps racing until the engine ends the match, which happens when both runners finish, when the finish window closes after the first finish, or at the three-minute limit. The race is never cut short by one player stopping.
+
+The two cases differ in the room, not in the race:
+
+- A closed socket keeps the seat, marked `connected: false` in the room state. The same account can reconnect and resume from the same position.
+- An explicit `room:leave`, a sign-out or a sign-in elsewhere removes the seat (section 5), so that account cannot return to the match. The runner it left behind stays frozen until the match ends.
+
+The room itself is not destroyed while a race is running, even when only one seat remains. It closes when the last member leaves.
+
 ## 10. Not implemented yet
 
 - The multiplayer Canvas/results pages. A separate local map playtest is available with `npm run preview`.
-- Replaying final results on a finished-room reconnect and detaching a live race socket when its account explicitly leaves a room.
-- Removing a player from a room when the account signs out or is signed in elsewhere: signing out already closes the sockets, which marks the seat disconnected, but the seat itself stays in the room.
+- Rematch: resetting a finished room for another race, and whether both players have to agree first.
+- Overall ranking across races: the server keeps the current room only and stores no history.
